@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './hooks/useAuth'
 import ProtectedRoute from './components/ProtectedRoute'
 import Login from './pages/Login'
+import AuthCallback from './pages/AuthCallback'
 import Dashboard from './pages/Dashboard'
 import Sales from './pages/Sales'
 import Expenses from './pages/Expenses'
@@ -17,6 +18,7 @@ function App() {
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={<Login />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
         
         {/* Protected routes */}
         <Route path="/" element={
@@ -32,7 +34,7 @@ function App() {
           <Route path="damage" element={<Damage />} />
           <Route path="reports" element={<Reports />} />
           <Route path="admin" element={
-            <ProtectedRoute requiredRoles={['super_user', 'accounts_incharge']}>
+            <ProtectedRoute requiredRoles={['super_user']}>
               <Admin />
             </ProtectedRoute>
           } />

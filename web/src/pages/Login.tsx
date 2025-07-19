@@ -20,6 +20,7 @@ import {
   Google
 } from '@mui/icons-material'
 import { useAuth } from '../hooks/useAuth'
+import GoogleSignIn from '../components/GoogleSignIn'
 
 interface TabPanelProps {
   children?: React.ReactNode
@@ -80,10 +81,22 @@ const Login = () => {
     }
   }
 
-  const handleGoogleLogin = async () => {
-    // TODO: Implement Google OAuth flow
-    // For now, show placeholder
-    setError('Google SSO will be implemented in next phase')
+  const handleGoogleSuccess = async (credential: string) => {
+    try {
+      setLoading(true)
+      setError('')
+      await loginGoogle(credential)
+      navigate(from, { replace: true })
+    } catch (err: any) {
+      setError(err.message || 'Google sign-in failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleGoogleError = (error: string) => {
+    setError(error)
+    setLoading(false)
   }
 
   return (
@@ -196,29 +209,14 @@ const Login = () => {
 
           {/* Manager Login Panel */}
           <TabPanel value={tab} index={1}>
-            <Button
-              fullWidth
-              variant="contained"
-              size="large"
-              startIcon={<Google />}
-              onClick={handleGoogleLogin}
-              disabled={loading}
-              sx={{ 
-                mt: 2, 
-                mb: 2, 
-                minHeight: 48,
-                backgroundColor: '#4285f4',
-                '&:hover': {
-                  backgroundColor: '#357ae8'
-                }
-              }}
-            >
-              {loading ? (
-                <CircularProgress size={24} color="inherit" />
-              ) : (
-                'Sign in with Google'
-              )}
-            </Button>
+            <Box sx={{ mt: 2, mb: 2 }}>
+              <GoogleSignIn
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+                disabled={loading}
+                loading={loading}
+              />
+            </Box>
 
             <Typography variant="body2" color="text.secondary" textAlign="center">
               For Store Managers, Accounts Incharge, and Super Users

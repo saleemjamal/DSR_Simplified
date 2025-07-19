@@ -18,7 +18,7 @@
 # Make sure backend is running first
 cd backend
 npm run dev
-# Should show: 🚀 Poppat Jamals DSR API server running on port 3001
+# Should show: 🚀 Poppat Jamals DSR API server running on port 3004
 
 # In a new terminal, start frontend
 cd web
@@ -167,7 +167,7 @@ salesApi.getSummary(date)
 - **Real-time Updates**: Polling-based (can add WebSocket later)
 
 ### 💡 Testing Notes
-1. **Backend must be running** on port 3001 first
+1. **Backend must be running** on port 3004 first
 2. **Database must be initialized** with Phase 1 setup
 3. **CORS is configured** for localhost:3000
 4. **API calls will fail** without valid authentication token

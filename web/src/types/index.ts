@@ -50,6 +50,19 @@ export interface Sale {
   custom_data: Record<string, any>
   created_at: string
   updated_at: string
+  // Nested objects from backend joins
+  store?: {
+    store_code: string
+    store_name: string
+  }
+  entered_by_user?: {
+    first_name: string
+    last_name: string
+  }
+  approved_by_user?: {
+    first_name: string
+    last_name: string
+  }
 }
 
 // Expense types
@@ -70,6 +83,19 @@ export interface Expense {
   expense_owner?: string
   created_at: string
   updated_at: string
+  // Nested objects from backend joins
+  store?: {
+    store_code: string
+    store_name: string
+  }
+  requested_by_user?: {
+    first_name: string
+    last_name: string
+  }
+  approved_by_user?: {
+    first_name: string
+    last_name: string
+  }
 }
 
 // Gift Voucher types

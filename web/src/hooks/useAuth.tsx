@@ -40,18 +40,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         if (token && userData) {
           const parsedUser = JSON.parse(userData)
           setUser(parsedUser)
-          
-          // Verify token is still valid by fetching fresh profile
-          try {
-            const freshProfile = await authApi.getProfile()
-            setUser(freshProfile)
-            localStorage.setItem('user_data', JSON.stringify(freshProfile))
-          } catch (error) {
-            // Token invalid, clear storage
-            localStorage.removeItem('auth_token')
-            localStorage.removeItem('user_data')
-            setUser(null)
-          }
         }
       } catch (error) {
         console.error('Auth initialization error:', error)
@@ -84,6 +72,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const loginGoogle = async (token: string) => {
     try {
       setLoading(true)
+      console.log('Sending token to backend:', token?.substring(0, 50) + '...')
       const authResponse: AuthResponse = await authApi.loginGoogle(token)
       
       localStorage.setItem('auth_token', authResponse.token)
@@ -91,6 +80,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setUser(authResponse.user)
     } catch (error: any) {
       console.error('Google login error:', error)
+      console.error('Error details:', error.response?.data)
       throw new Error(error.response?.data?.error || 'Google login failed')
     } finally {
       setLoading(false)

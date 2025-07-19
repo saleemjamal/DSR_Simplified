@@ -30,7 +30,8 @@ import {
   Settings,
   AccountCircle,
   Logout,
-  Business
+  Business,
+  People
 } from '@mui/icons-material'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
@@ -55,7 +56,7 @@ const navItems: NavItem[] = [
     text: 'Administration', 
     icon: <Settings />, 
     path: '/admin',
-    roles: ['super_user', 'accounts_incharge']
+    roles: ['super_user']
   }
 ]
 

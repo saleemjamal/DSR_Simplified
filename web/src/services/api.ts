@@ -63,13 +63,16 @@ export const authApi = {
     return response.data
   },
 
-  createCashier: async (userData: {
+  createUser: async (userData: {
     username: string
     password: string
+    email: string
     first_name: string
     last_name: string
+    role: string
+    store_id?: string
   }): Promise<ApiResponse<User>> => {
-    const response = await api.post<ApiResponse<User>>('/auth/users/cashier', userData)
+    const response = await api.post<ApiResponse<User>>('/auth/users', userData)
     return response.data
   },
 
@@ -87,6 +90,31 @@ export const authApi = {
     await api.post('/auth/logout')
     localStorage.removeItem('auth_token')
     localStorage.removeItem('user_data')
+  },
+
+  // User management endpoints
+  getUsers: async (): Promise<User[]> => {
+    const response = await api.get<User[]>('/auth/users')
+    return response.data
+  },
+
+  updateUserStatus: async (userId: string, isActive: boolean): Promise<ApiResponse<User>> => {
+    const response = await api.patch<ApiResponse<User>>(`/auth/users/${userId}/status`, { 
+      is_active: isActive 
+    })
+    return response.data
+  },
+
+  resetUserPassword: async (userId: string, newPassword: string): Promise<ApiResponse<User>> => {
+    const response = await api.patch<ApiResponse<User>>(`/auth/users/${userId}/password`, { 
+      new_password: newPassword 
+    })
+    return response.data
+  },
+
+  updateUser: async (userId: string, userData: Partial<User>): Promise<ApiResponse<User>> => {
+    const response = await api.patch<ApiResponse<User>>(`/auth/users/${userId}`, userData)
+    return response.data
   }
 }
 
@@ -97,6 +125,20 @@ export const storesApi = {
     return response.data
   },
 
+  create: async (storeData: {
+    store_code: string
+    store_name: string
+    address?: string
+    phone?: string
+    manager_id?: string
+    petty_cash_limit?: number
+    timezone?: string
+    daily_deadline_time?: string
+  }): Promise<ApiResponse<Store>> => {
+    const response = await api.post<ApiResponse<Store>>('/stores', storeData)
+    return response.data
+  },
+
   getCurrent: async (): Promise<Store> => {
     const response = await api.get<Store>('/stores/current')
     return response.data
@@ -104,6 +146,11 @@ export const storesApi = {
 
   getById: async (storeId: string): Promise<Store> => {
     const response = await api.get<Store>(`/stores/${storeId}`)
+    return response.data
+  },
+
+  update: async (storeId: string, storeData: Partial<Store>): Promise<ApiResponse<Store>> => {
+    const response = await api.patch<ApiResponse<Store>>(`/stores/${storeId}`, storeData)
     return response.data
   },
 
@@ -118,6 +165,7 @@ export const salesApi = {
   getAll: async (params?: {
     date?: string
     tender_type?: string
+    store_id?: string
     page?: number
     limit?: number
   }): Promise<Sale[]> => {
@@ -125,13 +173,14 @@ export const salesApi = {
     return response.data
   },
 
-  create: async (saleData: SalesFormData): Promise<ApiResponse<Sale>> => {
+  create: async (saleData: SalesFormData & { store_id?: string }): Promise<ApiResponse<Sale>> => {
     const response = await api.post<ApiResponse<Sale>>('/sales', saleData)
     return response.data
   },
 
   createBatch: async (batchData: {
     sale_date: string
+    store_id?: string
     tenders: Array<{
       tender_type: string
       amount: number
@@ -185,6 +234,21 @@ export const expensesApi = {
 
   create: async (expenseData: ExpenseFormData): Promise<ApiResponse<Expense>> => {
     const response = await api.post<ApiResponse<Expense>>('/expenses', expenseData)
+    return response.data
+  },
+
+  createBatch: async (batchData: {
+    expense_date: string
+    expenses: Array<{
+      category: string
+      description: string
+      amount: number
+      voucher_number?: string
+      expense_owner?: string
+      payment_method?: string
+    }>
+  }): Promise<ApiResponse<Expense[]>> => {
+    const response = await api.post<ApiResponse<Expense[]>>('/expenses/batch', batchData)
     return response.data
   },
 

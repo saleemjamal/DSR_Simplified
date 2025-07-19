@@ -53,13 +53,13 @@ cd backend
 npm run dev
 ```
 
-Visit: http://localhost:3001/health
+Visit: http://localhost:3004/health
 Should see: `{"status": "OK", "service": "Poppat Jamals DSR API"}`
 
 #### 4. Test Database Connection
 ```bash
 # Test with curl (or Postman)
-curl http://localhost:3001/api/v1/stores/current
+curl http://localhost:3004/api/v1/stores/current
 ```
 Should return 401 (expected - no auth token)
 

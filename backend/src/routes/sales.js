@@ -2,21 +2,39 @@ const express = require('express')
 const router = express.Router()
 const { authenticateUser, requireRole, requireStoreAccess } = require('../middleware/supabase')
 
-// Get sales for current user's store
+// Get sales with store filtering
 router.get('/', authenticateUser, async (req, res) => {
   try {
-    const { date, tender_type, page = 1, limit = 50 } = req.query
+    const { date, tender_type, store_id, page = 1, limit = 50 } = req.query
     
     let query = req.supabase
       .from('sales')
       .select(`
         *,
+        store:stores!sales_store_id_fkey(store_code, store_name),
         entered_by_user:users!sales_entered_by_fkey(first_name, last_name),
         approved_by_user:users!sales_approved_by_fkey(first_name, last_name)
       `)
       .order('created_at', { ascending: false })
 
-    // Apply filters
+    // Apply store filtering based on user role
+    if (req.user.role === 'store_manager' || req.user.role === 'cashier') {
+      // Store managers and cashiers can only see their store's data
+      if (!req.user.store_id) {
+        return res.status(400).json({ 
+          error: 'User not assigned to store. Contact admin.' 
+        })
+      }
+      query = query.eq('store_id', req.user.store_id)
+    } else if (req.user.role === 'super_user' || req.user.role === 'accounts_incharge') {
+      // Super users and accounts_incharge can see all stores, with optional filtering
+      if (store_id) {
+        query = query.eq('store_id', store_id)
+      }
+      // If no store_id specified, they see all stores
+    }
+
+    // Apply other filters
     if (date) {
       query = query.eq('sale_date', date)
     }
@@ -73,9 +91,42 @@ router.post('/batch', authenticateUser, async (req, res) => {
       })
     }
 
+    // Determine store_id - super users and accounts_incharge can work with any store
+    let storeId = req.user.store_id
+    
+    // For super users and accounts_incharge without assigned store, require store_id in request
+    if (!storeId && (req.user.role === 'super_user' || req.user.role === 'accounts_incharge')) {
+      if (!req.body.store_id) {
+        return res.status(400).json({ 
+          error: 'Please specify store_id in request body for multi-store access' 
+        })
+      }
+      
+      // Verify the store exists
+      const { data: store, error: storeError } = await req.supabase
+        .from('stores')
+        .select('id')
+        .eq('id', req.body.store_id)
+        .single()
+      
+      if (storeError || !store) {
+        return res.status(400).json({ 
+          error: 'Invalid store_id provided' 
+        })
+      }
+      
+      storeId = req.body.store_id
+    }
+    
+    if (!storeId) {
+      return res.status(400).json({ 
+        error: 'User not assigned to store. Contact admin to assign store.' 
+      })
+    }
+
     // Prepare sales data for batch insert
     const salesData = validTenders.map(tender => ({
-      store_id: req.user.store_id,
+      store_id: storeId,
       sale_date,
       tender_type: tender.tender_type,
       amount: parseFloat(tender.amount),
@@ -147,8 +198,41 @@ router.post('/', authenticateUser, async (req, res) => {
       })
     }
 
+    // Determine store_id - super users and accounts_incharge can work with any store
+    let storeId = req.user.store_id
+    
+    // For super users and accounts_incharge without assigned store, require store_id in request
+    if (!storeId && (req.user.role === 'super_user' || req.user.role === 'accounts_incharge')) {
+      if (!req.body.store_id) {
+        return res.status(400).json({ 
+          error: 'Please specify store_id in request body for multi-store access' 
+        })
+      }
+      
+      // Verify the store exists
+      const { data: store, error: storeError } = await req.supabase
+        .from('stores')
+        .select('id')
+        .eq('id', req.body.store_id)
+        .single()
+      
+      if (storeError || !store) {
+        return res.status(400).json({ 
+          error: 'Invalid store_id provided' 
+        })
+      }
+      
+      storeId = req.body.store_id
+    }
+    
+    if (!storeId) {
+      return res.status(400).json({ 
+        error: 'User not assigned to store. Contact admin to assign store.' 
+      })
+    }
+
     const salesData = {
-      store_id: req.user.store_id,
+      store_id: storeId,
       sale_date,
       tender_type,
       amount: parseFloat(amount),

@@ -38,8 +38,8 @@ import {
   Assignment
 } from '@mui/icons-material'
 import { format } from 'date-fns'
-import { Sale, SalesFormData } from '../types'
-import { salesApi } from '../services/api'
+import { Sale, SalesFormData, Store } from '../types'
+import { salesApi, storesApi } from '../services/api'
 import { useAuth } from '../hooks/useAuth'
 
 interface DailyTender {
@@ -52,6 +52,8 @@ interface DailyTender {
 
 const Sales = () => {
   const [sales, setSales] = useState<Sale[]>([])
+  const [stores, setStores] = useState<Store[]>([])
+  const [selectedStoreId, setSelectedStoreId] = useState('')
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [occasionalDialogOpen, setOccasionalDialogOpen] = useState(false)
@@ -79,9 +81,29 @@ const Sales = () => {
 
   const { user } = useAuth()
 
+  // Check if user needs store selection
+  const needsStoreSelection = user?.role === 'super_user' || user?.role === 'accounts_incharge'
+
   useEffect(() => {
     loadSales()
-  }, [])
+    if (needsStoreSelection) {
+      loadStores()
+    }
+  }, [needsStoreSelection])
+
+  const loadStores = async () => {
+    try {
+      const storesData = await storesApi.getAll()
+      setStores(storesData)
+      // Auto-select first store if only one exists
+      if (storesData.length === 1) {
+        setSelectedStoreId(storesData[0].id)
+      }
+    } catch (err: any) {
+      console.error('Failed to load stores:', err)
+      setError('Failed to load stores')
+    }
+  }
 
   const loadSales = async () => {
     try {
@@ -104,6 +126,12 @@ const Sales = () => {
       setSubmitting(true)
       setError('')
       
+      // Validate store selection for super users/accounts
+      if (needsStoreSelection && !selectedStoreId) {
+        setError('Please select a store')
+        return
+      }
+      
       // Filter out tenders with no amount
       const validTenders = dailyTenders.filter(tender => tender.amount > 0)
       
@@ -112,10 +140,17 @@ const Sales = () => {
         return
       }
       
-      await salesApi.createBatch({
+      const requestData: any = {
         sale_date: saleDate,
         tenders: validTenders
-      })
+      }
+      
+      // Add store_id for super users/accounts
+      if (needsStoreSelection && selectedStoreId) {
+        requestData.store_id = selectedStoreId
+      }
+      
+      await salesApi.createBatch(requestData)
       
       // Reset form
       setDailyTenders([
@@ -138,7 +173,20 @@ const Sales = () => {
       setSubmitting(true)
       setError('')
       
-      await salesApi.create(formData)
+      // Validate store selection for super users/accounts
+      if (needsStoreSelection && !selectedStoreId) {
+        setError('Please select a store')
+        return
+      }
+      
+      const requestData: any = { ...formData }
+      
+      // Add store_id for super users/accounts
+      if (needsStoreSelection && selectedStoreId) {
+        requestData.store_id = selectedStoreId
+      }
+      
+      await salesApi.create(requestData)
       
       setOccasionalDialogOpen(false)
       setFormData({
@@ -225,7 +273,7 @@ const Sales = () => {
             Daily Sales Entry
           </Typography>
           
-          <Box mb={3}>
+          <Box mb={3} display="flex" gap={2} alignItems="center">
             <TextField
               label="Sale Date"
               type="date"
@@ -234,6 +282,25 @@ const Sales = () => {
               InputLabelProps={{ shrink: true }}
               size="small"
             />
+            
+            {/* Store Selection for Super Users/Accounts */}
+            {needsStoreSelection && (
+              <FormControl size="small" sx={{ minWidth: 200 }}>
+                <InputLabel>Select Store *</InputLabel>
+                <Select
+                  value={selectedStoreId}
+                  onChange={(e) => setSelectedStoreId(e.target.value)}
+                  label="Select Store *"
+                  required
+                >
+                  {stores.map((store) => (
+                    <MenuItem key={store.id} value={store.id}>
+                      {store.store_code} - {store.store_name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
           </Box>
           
           <TableContainer component={Paper} variant="outlined">
@@ -328,6 +395,7 @@ const Sales = () => {
                 <TableHead>
                   <TableRow>
                     <TableCell>Date</TableCell>
+                    {needsStoreSelection && <TableCell>Store</TableCell>}
                     <TableCell>Tender Type</TableCell>
                     <TableCell align="right">Amount</TableCell>
                     <TableCell>Reference</TableCell>
@@ -342,6 +410,11 @@ const Sales = () => {
                       <TableCell>
                         {format(new Date(sale.sale_date), 'MMM dd, yyyy')}
                       </TableCell>
+                      {needsStoreSelection && (
+                        <TableCell>
+                          {sale.store ? `${sale.store.store_code} - ${sale.store.store_name}` : '-'}
+                        </TableCell>
+                      )}
                       <TableCell>
                         <Chip 
                           label={getTenderTypeDisplay(sale.tender_type)}
@@ -363,8 +436,10 @@ const Sales = () => {
                         />
                       </TableCell>
                       <TableCell>
-                        {/* Would show user name if populated */}
-                        User ID: {sale.entered_by.substring(0, 8)}...
+                        {sale.entered_by_user ? 
+                          `${sale.entered_by_user.first_name} ${sale.entered_by_user.last_name}` : 
+                          `User ID: ${sale.entered_by.substring(0, 8)}...`
+                        }
                       </TableCell>
                       {canApprove && (
                         <TableCell align="center">
@@ -392,7 +467,7 @@ const Sales = () => {
                   ))}
                   {sales.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={canApprove ? 7 : 6} align="center">
+                      <TableCell colSpan={6 + (needsStoreSelection ? 1 : 0) + (canApprove ? 1 : 0)} align="center">
                         No sales entries found for today
                       </TableCell>
                     </TableRow>
@@ -417,6 +492,25 @@ const Sales = () => {
               fullWidth
               InputLabelProps={{ shrink: true }}
             />
+
+            {/* Store Selection for Super Users/Accounts */}
+            {needsStoreSelection && (
+              <FormControl fullWidth>
+                <InputLabel>Select Store *</InputLabel>
+                <Select
+                  value={selectedStoreId}
+                  onChange={(e) => setSelectedStoreId(e.target.value)}
+                  label="Select Store *"
+                  required
+                >
+                  {stores.map((store) => (
+                    <MenuItem key={store.id} value={store.id}>
+                      {store.store_code} - {store.store_name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
 
             <FormControl fullWidth>
               <InputLabel>Tender Type</InputLabel>
