@@ -8,6 +8,7 @@ interface AuthContextType {
   login: (credentials: LoginCredentials) => Promise<void>
   loginGoogle: (token: string) => Promise<void>
   logout: () => Promise<void>
+  refreshProfile: () => Promise<void>
   isAuthenticated: boolean
   hasRole: (roles: string | string[]) => boolean
 }
@@ -53,14 +54,41 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     initAuth()
   }, [])
 
+  const refreshProfile = async () => {
+    try {
+      const token = localStorage.getItem('auth_token')
+      if (!token) return
+      
+      console.log('Refreshing user profile...')
+      const freshProfile = await authApi.getProfile()
+      console.log('Fresh profile data:', freshProfile)
+      
+      localStorage.setItem('user_data', JSON.stringify(freshProfile))
+      setUser(freshProfile)
+    } catch (error: any) {
+      console.error('Profile refresh error:', error)
+      // If profile refresh fails, user might need to re-login
+      if (error.response?.status === 401) {
+        localStorage.removeItem('auth_token')
+        localStorage.removeItem('user_data')
+        setUser(null)
+      }
+    }
+  }
+
   const login = async (credentials: LoginCredentials) => {
     try {
       setLoading(true)
       const authResponse: AuthResponse = await authApi.loginLocal(credentials)
       
       localStorage.setItem('auth_token', authResponse.token)
-      localStorage.setItem('user_data', JSON.stringify(authResponse.user))
-      setUser(authResponse.user)
+      
+      // Get fresh profile data with store information
+      const freshProfile = await authApi.getProfile()
+      console.log('Login - Fresh profile:', freshProfile)
+      
+      localStorage.setItem('user_data', JSON.stringify(freshProfile))
+      setUser(freshProfile)
     } catch (error: any) {
       console.error('Login error:', error)
       throw new Error(error.response?.data?.error || 'Login failed')
@@ -76,8 +104,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const authResponse: AuthResponse = await authApi.loginGoogle(token)
       
       localStorage.setItem('auth_token', authResponse.token)
-      localStorage.setItem('user_data', JSON.stringify(authResponse.user))
-      setUser(authResponse.user)
+      
+      // Get fresh profile data with store information
+      const freshProfile = await authApi.getProfile()
+      console.log('Google login - Fresh profile:', freshProfile)
+      
+      localStorage.setItem('user_data', JSON.stringify(freshProfile))
+      setUser(freshProfile)
     } catch (error: any) {
       console.error('Google login error:', error)
       console.error('Error details:', error.response?.data)
@@ -111,6 +144,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     login,
     loginGoogle,
     logout,
+    refreshProfile,
     isAuthenticated: !!user,
     hasRole
   }

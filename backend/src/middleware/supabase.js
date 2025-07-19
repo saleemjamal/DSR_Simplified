@@ -11,11 +11,14 @@ const authenticateUser = async (req, res, next) => {
     }
 
     let userId
+    let effectiveStoreId = null
 
     // First try to verify as local JWT token
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET)
       userId = decoded.sub
+      effectiveStoreId = decoded.store_id // Get effective store ID from JWT
+      console.log(`JWT auth: User ${userId}, effective store: ${effectiveStoreId}`)
     } catch (jwtError) {
       // If JWT verification fails, try as Supabase token
       const { data: { user }, error } = await supabase.auth.getUser(token)
@@ -25,6 +28,7 @@ const authenticateUser = async (req, res, next) => {
       }
       
       userId = user.id
+      console.log(`Supabase auth: User ${userId}`)
     }
 
     // Get user details from our users table
@@ -36,6 +40,30 @@ const authenticateUser = async (req, res, next) => {
 
     if (userError || !userDetails) {
       return res.status(401).json({ error: 'User not found in system' })
+    }
+
+    // If we have effective store ID from JWT, use it; otherwise fall back to database value
+    if (effectiveStoreId !== null) {
+      userDetails.store_id = effectiveStoreId
+      console.log(`Using effective store ID from JWT: ${effectiveStoreId}`)
+    } else {
+      // For Supabase tokens, determine effective store ID the same way as login
+      let storeId = userDetails.store_id
+      
+      if (!storeId || userDetails.role === 'store_manager') {
+        const { data: managedStore } = await supabaseAdmin
+          .from('stores')
+          .select('id')
+          .eq('manager_id', userId)
+          .single()
+        
+        if (managedStore) {
+          storeId = managedStore.id
+          console.log(`Supabase auth: User ${userId} manages store ${storeId}`)
+        }
+      }
+      
+      userDetails.store_id = storeId
     }
 
     // Set user context for RLS and audit logging
@@ -97,24 +125,42 @@ const requireRole = (roles) => {
 }
 
 // Middleware to check if user can access specific store
-const requireStoreAccess = (req, res, next) => {
+const requireStoreAccess = async (req, res, next) => {
   const storeId = req.params.storeId || req.body.store_id || req.query.store_id
   
   if (!storeId) {
     return res.status(400).json({ error: 'Store ID required' })
   }
 
-  // Super users can access any store
-  if (req.user.role === 'super_user') {
+  // Super users and accounts can access any store
+  if (req.user.role === 'super_user' || req.user.role === 'accounts_incharge') {
     return next()
   }
 
-  // Other users can only access their own store
-  if (req.user.store_id !== storeId) {
-    return res.status(403).json({ error: 'Access denied to this store' })
+  // Check if user has access to this store via direct assignment
+  if (req.user.store_id === storeId) {
+    return next()
   }
 
-  next()
+  // Check if user manages this store (via stores.manager_id)
+  try {
+    const { data: managedStore, error } = await supabaseAdmin
+      .from('stores')
+      .select('id')
+      .eq('id', storeId)
+      .eq('manager_id', req.user.id)
+      .single()
+
+    if (!error && managedStore) {
+      console.log(`Store access granted: User ${req.user.id} manages store ${storeId}`)
+      return next()
+    }
+  } catch (error) {
+    console.error('Store access check error:', error)
+  }
+
+  // Access denied
+  return res.status(403).json({ error: 'Access denied to this store' })
 }
 
 // Middleware for admin operations (uses service role)

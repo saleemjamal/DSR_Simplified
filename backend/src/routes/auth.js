@@ -33,13 +33,30 @@ router.post('/login/local', async (req, res) => {
       return res.status(401).json({ error: 'Invalid username or password' })
     }
 
+    // Determine effective store_id (check both assignment methods)
+    let effectiveStoreId = user.store_id
+    
+    // For store managers, also check if they manage a store
+    if (!effectiveStoreId || user.role === 'store_manager') {
+      const { data: managedStore } = await supabaseAdmin
+        .from('stores')
+        .select('id')
+        .eq('manager_id', user.id)
+        .single()
+      
+      if (managedStore) {
+        effectiveStoreId = managedStore.id
+        console.log(`Local login: User ${user.id} manages store ${managedStore.id}`)
+      }
+    }
+
     // Create JWT token
     const token = jwt.sign(
       { 
         sub: user.id,
         username: user.username,
         role: user.role,
-        store_id: user.store_id
+        store_id: effectiveStoreId
       },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
@@ -145,13 +162,30 @@ router.post('/login/google', async (req, res) => {
       })
       .eq('id', finalUser.id)
 
+    // Determine effective store_id (check both assignment methods)
+    let effectiveStoreId = finalUser.store_id
+    
+    // For store managers, also check if they manage a store  
+    if (!effectiveStoreId || finalUser.role === 'store_manager') {
+      const { data: managedStore } = await supabaseAdmin
+        .from('stores')
+        .select('id')
+        .eq('manager_id', finalUser.id)
+        .single()
+      
+      if (managedStore) {
+        effectiveStoreId = managedStore.id
+        console.log(`Google login: User ${finalUser.id} manages store ${managedStore.id}`)
+      }
+    }
+
     // Create our own JWT token for the authenticated user
     const jwtToken = jwt.sign(
       { 
         sub: finalUser.id,
         email: finalUser.email,
         role: finalUser.role,
-        store_id: finalUser.store_id
+        store_id: effectiveStoreId
       },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
@@ -171,7 +205,7 @@ router.post('/login/google', async (req, res) => {
 // Create user account (comprehensive endpoint for all roles)
 router.post('/users', authenticateUser, async (req, res) => {
   try {
-    const { username, password, email, first_name, last_name, role, store_id } = req.body
+    const { password, email, first_name, last_name, role } = req.body
 
     console.log('POST /users - Request body:', req.body)
     console.log('POST /users - User context:', {
@@ -181,11 +215,14 @@ router.post('/users', authenticateUser, async (req, res) => {
     })
 
     // Validation
-    if (!username || !email || !first_name || !last_name || !role) {
+    if (!email || !first_name || !last_name || !role) {
       return res.status(400).json({ 
-        error: 'Username, email, first name, last name, and role are required' 
+        error: 'Email, first name, last name, and role are required' 
       })
     }
+
+    // Auto-generate username from email
+    const username = email.split('@')[0].toLowerCase()
 
     // Password only required for cashiers (local auth)
     if (role === 'cashier' && !password) {
@@ -195,6 +232,8 @@ router.post('/users', authenticateUser, async (req, res) => {
     }
 
     // Role-based permission checks
+    let store_id = null // Default: no store assignment initially
+    
     if (req.user.role === 'store_manager') {
       // Store managers can only create cashiers for their own store
       if (role !== 'cashier') {
@@ -207,19 +246,13 @@ router.post('/users', authenticateUser, async (req, res) => {
           error: 'Store manager must be assigned to a store' 
         })
       }
-      // Force store assignment to manager's store
+      // Assign cashier to manager's store
       store_id = req.user.store_id
     } else if (req.user.role === 'super_user') {
       // Super users can create any role
-      // Store assignment logic:
-      // - super_user and accounts_incharge: store_id should be null for multi-store access
-      // - store_manager and cashier: store_id can be provided or assigned later
-      if (role === 'super_user' || role === 'accounts_incharge') {
-        store_id = null // Multi-store access
-      } else if (role === 'store_manager' || role === 'cashier') {
-        // Use provided store_id or null (to be assigned later)
-        store_id = store_id || null
-      }
+      // All users created without store assignment initially
+      // Store assignment will be handled when creating stores
+      store_id = null
     } else {
       return res.status(403).json({ 
         error: 'Insufficient permissions to create user accounts' 
@@ -332,25 +365,55 @@ router.post('/users/cashier', authenticateUser, requireRole('store_manager'), as
 // Get current user profile
 router.get('/profile', authenticateUser, async (req, res) => {
   try {
-    // Get user with store details
-    const { data: userWithStore, error } = await req.supabase
+    // Get user basic info first
+    const { data: user, error: userError } = await req.supabase
       .from('users')
-      .select(`
-        *,
-        stores (
-          store_code,
-          store_name,
-          address,
-          phone
-        )
-      `)
+      .select('*')
       .eq('id', req.user.id)
       .single()
 
-    if (error) {
-      throw error
+    if (userError) {
+      throw userError
     }
 
+    let storeInfo = null
+
+    // Check for store assignment in two ways:
+    // 1. Direct assignment via users.store_id
+    if (user.store_id) {
+      const { data: directStore, error: directStoreError } = await req.supabase
+        .from('stores')
+        .select('store_code, store_name, address, phone')
+        .eq('id', user.store_id)
+        .single()
+      
+      if (!directStoreError && directStore) {
+        storeInfo = directStore
+        console.log(`User ${user.id} has direct store assignment: ${directStore.store_code}`)
+      }
+    }
+
+    // 2. Manager assignment via stores.manager_id (takes precedence for managers)
+    if (!storeInfo || user.role === 'store_manager') {
+      const { data: managedStore, error: managedStoreError } = await req.supabase
+        .from('stores')
+        .select('store_code, store_name, address, phone')
+        .eq('manager_id', user.id)
+        .single()
+      
+      if (!managedStoreError && managedStore) {
+        storeInfo = managedStore
+        console.log(`User ${user.id} manages store: ${managedStore.store_code}`)
+      }
+    }
+
+    // Combine user data with store info
+    const userWithStore = {
+      ...user,
+      stores: storeInfo
+    }
+
+    console.log(`Profile loaded for user ${user.id} (${user.email}): Store = ${storeInfo?.store_code || 'None'}`)
     res.json(userWithStore)
   } catch (error) {
     console.error('Get profile error:', error)
@@ -499,6 +562,68 @@ router.patch('/users/:userId/password', authenticateUser, requireRole(['super_us
   }
 })
 
+// Sync store assignments (super users only) - fixes store_id/manager_id mismatches
+router.post('/sync-store-assignments', authenticateUser, requireRole(['super_user']), async (req, res) => {
+  try {
+    console.log('Starting store assignment synchronization...')
+    
+    // Get all stores with managers
+    const { data: stores, error: storesError } = await req.supabase
+      .from('stores')
+      .select('id, store_code, manager_id')
+      .not('manager_id', 'is', null)
+    
+    if (storesError) {
+      throw storesError
+    }
+    
+    let syncResults = []
+    let totalSynced = 0
+    
+    for (const store of stores) {
+      console.log(`Syncing store ${store.store_code} (${store.id}) with manager ${store.manager_id}`)
+      
+      // Update the manager's store_id to match
+      const { data: updatedUser, error: updateError } = await req.supabase
+        .from('users')
+        .update({ store_id: store.id })
+        .eq('id', store.manager_id)
+        .select('id, first_name, last_name, email')
+        .single()
+      
+      if (updateError) {
+        console.error(`Failed to sync store assignment for manager ${store.manager_id}:`, updateError)
+        syncResults.push({
+          store_code: store.store_code,
+          manager_id: store.manager_id,
+          status: 'failed',
+          error: updateError.message
+        })
+      } else {
+        console.log(`Successfully synced ${updatedUser.first_name} ${updatedUser.last_name} to store ${store.store_code}`)
+        syncResults.push({
+          store_code: store.store_code,
+          manager_id: store.manager_id,
+          manager_name: `${updatedUser.first_name} ${updatedUser.last_name}`,
+          status: 'synced'
+        })
+        totalSynced++
+      }
+    }
+    
+    res.json({
+      message: `Store assignment synchronization completed. ${totalSynced}/${stores.length} assignments synced.`,
+      results: syncResults,
+      total_stores: stores.length,
+      total_synced: totalSynced
+    })
+    
+  } catch (error) {
+    console.error('Sync store assignments error:', error)
+    res.status(500).json({ error: 'Failed to sync store assignments' })
+  }
+})
+
 // Logout (for session cleanup)
 router.post('/logout', authenticateUser, async (req, res) => {
   try {
@@ -530,7 +655,7 @@ const determineRoleFromEmail = (email) => {
 router.patch('/users/:userId', authenticateUser, requireRole(['super_user', 'store_manager', 'accounts_incharge']), async (req, res) => {
   try {
     const { userId } = req.params
-    const { first_name, last_name, role, is_active } = req.body
+    const { first_name, last_name, role, is_active, store_id } = req.body
 
     // Validate required fields
     if (!first_name || !last_name) {
@@ -547,11 +672,34 @@ router.patch('/users/:userId', authenticateUser, requireRole(['super_user', 'sto
       })
     }
 
+    // Store assignment restrictions
+    if (store_id !== undefined && req.user.role !== 'super_user') {
+      // Only super users can change store assignments
+      return res.status(403).json({ 
+        error: 'Only super users can change store assignments' 
+      })
+    }
+
     // Validate role if provided
     if (role && !['cashier', 'store_manager', 'accounts_incharge', 'super_user'].includes(role)) {
       return res.status(400).json({ 
         error: 'Invalid role specified' 
       })
+    }
+
+    // Validate store_id if provided
+    if (store_id) {
+      const { data: store, error: storeError } = await req.supabase
+        .from('stores')
+        .select('id')
+        .eq('id', store_id)
+        .single()
+
+      if (storeError || !store) {
+        return res.status(400).json({ 
+          error: 'Invalid store ID' 
+        })
+      }
     }
 
     // Update user data
@@ -561,12 +709,15 @@ router.patch('/users/:userId', authenticateUser, requireRole(['super_user', 'sto
       updated_at: new Date().toISOString()
     }
 
-    // Only add role and is_active if provided and user has permission
+    // Only add role, is_active, and store_id if provided and user has permission
     if (role !== undefined && req.user.role === 'super_user') {
       updateData.role = role
     }
     if (is_active !== undefined) {
       updateData.is_active = is_active
+    }
+    if (store_id !== undefined && req.user.role === 'super_user') {
+      updateData.store_id = store_id
     }
 
     const { data: updatedUser, error } = await req.supabase

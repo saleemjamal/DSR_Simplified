@@ -13,6 +13,13 @@ export interface User {
   preferences: Record<string, any>
   created_at: string
   updated_at: string
+  // Nested store object from backend joins
+  stores?: {
+    store_code: string
+    store_name: string
+    address?: string
+    phone?: string
+  }
 }
 
 // Store types

@@ -119,6 +119,23 @@ router.post('/', authenticateUser, requireRole(['super_user']), async (req, res)
       throw error
     }
 
+    // Synchronize user store assignment if manager is assigned
+    if (manager_id && newStore) {
+      console.log(`Syncing store assignment: Setting user ${manager_id} store_id to ${newStore.id}`)
+      
+      const { error: userUpdateError } = await req.supabase
+        .from('users')
+        .update({ store_id: newStore.id })
+        .eq('id', manager_id)
+      
+      if (userUpdateError) {
+        console.error('Failed to sync user store assignment:', userUpdateError)
+        // Continue with store creation but log the issue
+      } else {
+        console.log('Successfully synced user store assignment')
+      }
+    }
+
     res.status(201).json({
       message: 'Store created successfully',
       store: newStore
@@ -246,6 +263,17 @@ router.patch('/:storeId', authenticateUser, requireRole(['super_user']), async (
       }
     }
 
+    // Get current store data to check previous manager
+    const { data: currentStore, error: getCurrentError } = await req.supabase
+      .from('stores')
+      .select('manager_id')
+      .eq('id', storeId)
+      .single()
+
+    if (getCurrentError) {
+      throw getCurrentError
+    }
+
     // Update the store
     const { data: updatedStore, error } = await req.supabase
       .from('stores')
@@ -269,6 +297,37 @@ router.patch('/:storeId', authenticateUser, requireRole(['super_user']), async (
 
     if (error) {
       throw error
+    }
+
+    // Synchronize user store assignments
+    // 1. Remove store assignment from previous manager (if different)
+    if (currentStore.manager_id && currentStore.manager_id !== manager_id) {
+      console.log(`Removing store assignment from previous manager: ${currentStore.manager_id}`)
+      
+      const { error: prevManagerError } = await req.supabase
+        .from('users')
+        .update({ store_id: null })
+        .eq('id', currentStore.manager_id)
+      
+      if (prevManagerError) {
+        console.error('Failed to remove previous manager store assignment:', prevManagerError)
+      }
+    }
+    
+    // 2. Assign store to new manager (if provided)
+    if (manager_id) {
+      console.log(`Syncing store assignment: Setting user ${manager_id} store_id to ${storeId}`)
+      
+      const { error: userUpdateError } = await req.supabase
+        .from('users')
+        .update({ store_id: storeId })
+        .eq('id', manager_id)
+      
+      if (userUpdateError) {
+        console.error('Failed to sync new manager store assignment:', userUpdateError)
+      } else {
+        console.log('Successfully synced new manager store assignment')
+      }
     }
 
     res.json({

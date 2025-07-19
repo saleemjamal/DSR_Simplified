@@ -61,7 +61,7 @@ const Admin = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [selectedStore, setSelectedStore] = useState<Store | null>(null)
   
-  const { user: currentUser } = useAuth()
+  const { user: currentUser, refreshProfile } = useAuth()
   const [storeFormData, setStoreFormData] = useState({
     store_code: '',
     store_name: '',
@@ -84,13 +84,11 @@ const Admin = () => {
   })
   
   const [userFormData, setUserFormData] = useState({
-    username: '',
-    password: '',
-    email: '',
-    first_name: '',
-    last_name: '',
     role: 'cashier',
-    store_id: ''
+    email: '',
+    password: '',
+    first_name: '',
+    last_name: ''
   })
   
   const [editUserFormData, setEditUserFormData] = useState({
@@ -250,9 +248,9 @@ const Admin = () => {
       setSubmitting(true)
       setError('')
       
-      // Check required fields based on role
-      if (!userFormData.username || !userFormData.email || !userFormData.first_name || !userFormData.last_name) {
-        setError('Username, email, first name, and last name are required')
+      // Check required fields
+      if (!userFormData.email || !userFormData.first_name || !userFormData.last_name) {
+        setError('Email, first name, and last name are required')
         return
       }
       
@@ -279,13 +277,11 @@ const Admin = () => {
       
       setCreateUserDialogOpen(false)
       setUserFormData({
-        username: '',
-        password: '',
-        email: '',
-        first_name: '',
-        last_name: '',
         role: 'cashier',
-        store_id: ''
+        email: '',
+        password: '',
+        first_name: '',
+        last_name: ''
       })
       setSuccess('User account created successfully')
       await loadUsers()
@@ -344,6 +340,33 @@ const Admin = () => {
       setSuccess('Password reset successfully')
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to reset password')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleSyncStoreAssignments = async () => {
+    try {
+      setSubmitting(true)
+      setError('')
+      
+      const result = await authApi.syncStoreAssignments()
+      setSuccess(`${result.message} (${result.total_synced}/${result.total_stores} stores synced)`)
+      
+      // Reload users to reflect changes
+      await loadUsers()
+      
+      // If current user might be affected, refresh their profile
+      if (currentUser?.role === 'store_manager') {
+        try {
+          await refreshProfile()
+          console.log('Profile refreshed after store sync')
+        } catch (profileError) {
+          console.error('Failed to refresh profile after sync:', profileError)
+        }
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to sync store assignments')
     } finally {
       setSubmitting(false)
     }
@@ -487,15 +510,27 @@ const Admin = () => {
                 <PeopleIcon sx={{ mr: 1 }} />
                 <Typography variant="h6">User Management</Typography>
               </Box>
-              {canManageUsers && (
-                <Button
-                  variant="contained"
-                  startIcon={<AddIcon />}
-                  onClick={() => setCreateUserDialogOpen(true)}
-                >
-                  Create User Account
-                </Button>
-              )}
+              <Box display="flex" gap={1}>
+                {canManageUsers && (
+                  <Button
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={() => setCreateUserDialogOpen(true)}
+                  >
+                    Create User Account
+                  </Button>
+                )}
+                {currentUser?.role === 'super_user' && (
+                  <Button
+                    variant="outlined"
+                    color="secondary"
+                    onClick={handleSyncStoreAssignments}
+                    disabled={submitting}
+                  >
+                    {submitting ? 'Syncing...' : 'Sync Store Assignments'}
+                  </Button>
+                )}
+              </Box>
             </Box>
 
             {loading ? (
@@ -763,30 +798,46 @@ const Admin = () => {
       <Dialog open={createUserDialogOpen} onClose={() => setCreateUserDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Create User Account</DialogTitle>
         <DialogContent>
+          {/* Debug info */}
+          <Box sx={{ mb: 1, p: 1, bgcolor: 'grey.100', fontSize: '0.8rem' }}>
+            Current role: {userFormData.role} | Password field: {userFormData.role === 'cashier' ? 'visible' : 'hidden'}
+          </Box>
           <Box display="flex" flexDirection="column" gap={2} mt={1}>
-            <TextField
-              label="Username"
-              value={userFormData.username}
-              onChange={(e) => setUserFormData({ ...userFormData, username: e.target.value })}
-              fullWidth
-              required
-            />
+            {/* 1. Role Selection (first - controls other fields) */}
+            <FormControl fullWidth>
+              <InputLabel id="role-select-label">Role</InputLabel>
+              <Select
+                labelId="role-select-label"
+                id="role-select"
+                value={userFormData.role}
+                label="Role"
+                onChange={(event) => {
+                  console.log('Event triggered:', event.target.value)
+                  const selectedRole = event.target.value
+                  console.log('Selected role:', selectedRole)
+                  
+                  setUserFormData({
+                    ...userFormData,
+                    role: selectedRole,
+                    password: selectedRole === 'cashier' ? userFormData.password : ''
+                  })
+                }}
+                MenuProps={{
+                  PaperProps: {
+                    style: {
+                      maxHeight: 224,
+                    },
+                  },
+                }}
+              >
+                <MenuItem value="cashier">Cashier</MenuItem>
+                <MenuItem value="store_manager">Store Manager</MenuItem>
+                <MenuItem value="accounts_incharge">Accounts In-charge</MenuItem>
+                <MenuItem value="super_user">Super User</MenuItem>
+              </Select>
+            </FormControl>
 
-            <TextField
-              label="Password"
-              type="password"
-              value={userFormData.password}
-              onChange={(e) => setUserFormData({ ...userFormData, password: e.target.value })}
-              fullWidth
-              required={userFormData.role === 'cashier'} // Only required for cashiers (local auth)
-              disabled={userFormData.role !== 'cashier'} // Disable for SSO users
-              helperText={
-                userFormData.role === 'cashier' 
-                  ? "Minimum 6 characters (local authentication)" 
-                  : "Google SSO authentication - no password needed"
-              }
-            />
-
+            {/* 2. Email */}
             <TextField
               label="Email"
               type="email"
@@ -795,9 +846,23 @@ const Admin = () => {
               fullWidth
               required
               placeholder="user@poppatjamals.com"
-              helperText="Required for Google SSO users"
+              helperText="Username will be auto-generated from email"
             />
 
+            {/* 3. Password (only for cashiers) */}
+            {userFormData.role === 'cashier' && (
+              <TextField
+                label="Password"
+                type="password"
+                value={userFormData.password}
+                onChange={(e) => setUserFormData({ ...userFormData, password: e.target.value })}
+                fullWidth
+                required
+                helperText="Minimum 6 characters (local authentication)"
+              />
+            )}
+
+            {/* 4. First Name */}
             <TextField
               label="First Name"
               value={userFormData.first_name}
@@ -806,6 +871,7 @@ const Admin = () => {
               required
             />
 
+            {/* 5. Last Name */}
             <TextField
               label="Last Name"
               value={userFormData.last_name}
@@ -813,52 +879,6 @@ const Admin = () => {
               fullWidth
               required
             />
-
-            <FormControl fullWidth>
-              <InputLabel>Role</InputLabel>
-              <Select
-                value={userFormData.role}
-                onChange={(e) => {
-                  const newRole = e.target.value
-                  setUserFormData({ 
-                    ...userFormData, 
-                    role: newRole, 
-                    store_id: '', 
-                    // Clear password for SSO users
-                    password: newRole === 'cashier' ? userFormData.password : ''
-                  })
-                }}
-                label="Role"
-              >
-                <MenuItem value="cashier">Cashier</MenuItem>
-                {currentUser?.role === 'super_user' && (
-                  <>
-                    <MenuItem value="store_manager">Store Manager</MenuItem>
-                    <MenuItem value="accounts_incharge">Accounts In-charge</MenuItem>
-                    <MenuItem value="super_user">Super User</MenuItem>
-                  </>
-                )}
-              </Select>
-            </FormControl>
-
-            {/* Store Assignment - Only for store managers and cashiers */}
-            {(userFormData.role === 'store_manager' || userFormData.role === 'cashier') && (
-              <FormControl fullWidth>
-                <InputLabel>Store Assignment</InputLabel>
-                <Select
-                  value={userFormData.store_id}
-                  onChange={(e) => setUserFormData({ ...userFormData, store_id: e.target.value })}
-                  label="Store Assignment"
-                >
-                  <MenuItem value="">No store assigned (assign later)</MenuItem>
-                  {stores.map((store) => (
-                    <MenuItem key={store.id} value={store.id}>
-                      {store.store_code} - {store.store_name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
           </Box>
         </DialogContent>
         <DialogActions>

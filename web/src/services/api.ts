@@ -64,13 +64,11 @@ export const authApi = {
   },
 
   createUser: async (userData: {
-    username: string
-    password: string
+    role: string
     email: string
+    password?: string
     first_name: string
     last_name: string
-    role: string
-    store_id?: string
   }): Promise<ApiResponse<User>> => {
     const response = await api.post<ApiResponse<User>>('/auth/users', userData)
     return response.data
@@ -114,6 +112,22 @@ export const authApi = {
 
   updateUser: async (userId: string, userData: Partial<User>): Promise<ApiResponse<User>> => {
     const response = await api.patch<ApiResponse<User>>(`/auth/users/${userId}`, userData)
+    return response.data
+  },
+
+  syncStoreAssignments: async (): Promise<{
+    message: string
+    results: Array<{
+      store_code: string
+      manager_id: string
+      manager_name?: string
+      status: 'synced' | 'failed'
+      error?: string
+    }>
+    total_stores: number
+    total_synced: number
+  }> => {
+    const response = await api.post('/auth/sync-store-assignments')
     return response.data
   }
 }

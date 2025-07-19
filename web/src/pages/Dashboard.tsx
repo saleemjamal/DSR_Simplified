@@ -34,7 +34,7 @@ interface DashboardCard {
 }
 
 const Dashboard = () => {
-  const { user } = useAuth()
+  const { user, refreshProfile } = useAuth()
   const [loading, setLoading] = useState(true)
   const [todaySales, setTodaySales] = useState<any[]>([])
   const [dashboardStats, setDashboardStats] = useState({
@@ -48,6 +48,12 @@ const Dashboard = () => {
 
   useEffect(() => {
     loadDashboardData()
+    
+    // Refresh profile to ensure store information is current
+    if (user && !user.stores && user.role === 'store_manager') {
+      console.log('Store manager without store info detected, refreshing profile...')
+      refreshProfile()
+    }
   }, [])
 
   const loadDashboardData = async () => {
@@ -198,7 +204,11 @@ const Dashboard = () => {
           {getGreeting()}, {user?.first_name}!
         </Typography>
         <Typography variant="body1" color="text.secondary">
-          {format(new Date(), 'EEEE, MMMM do, yyyy')} • Store: Annanagar
+          {format(new Date(), 'EEEE, MMMM do, yyyy')}
+          {user?.role === 'super_user' || user?.role === 'accounts_incharge' ? 
+            ' • Multi-Store Access' : 
+            user?.stores ? ` • Store: ${user.stores.store_name}` : ' • No Store Assigned'
+          }
         </Typography>
       </Box>
 

@@ -381,12 +381,34 @@ router.patch('/:saleId/convert-handbill', authenticateUser, requireRole(['store_
 // Get sales summary by tender type
 router.get('/summary', authenticateUser, async (req, res) => {
   try {
-    const { date = new Date().toISOString().split('T')[0] } = req.query
-
-    const { data: summary, error } = await req.supabase
+    const { date = new Date().toISOString().split('T')[0], store_id } = req.query
+    
+    let query = req.supabase
       .from('sales')
       .select('tender_type, amount')
       .eq('sale_date', date)
+
+    // Apply store filtering based on user role
+    if (req.user.role === 'store_manager' || req.user.role === 'cashier') {
+      // Store managers and cashiers can only see their store's data
+      if (!req.user.store_id) {
+        return res.status(400).json({ 
+          error: 'User not assigned to store. Contact admin.' 
+        })
+      }
+      query = query.eq('store_id', req.user.store_id)
+      console.log(`Sales summary: Filtering for store ${req.user.store_id} (${req.user.role})`)
+    } else if (req.user.role === 'super_user' || req.user.role === 'accounts_incharge') {
+      // Super users and accounts_incharge can see all stores, with optional filtering
+      if (store_id) {
+        query = query.eq('store_id', store_id)
+        console.log(`Sales summary: Filtering for specific store ${store_id}`)
+      } else {
+        console.log(`Sales summary: No store filter (all stores)`)
+      }
+    }
+
+    const { data: summary, error } = await query
 
     if (error) {
       throw error
@@ -406,6 +428,7 @@ router.get('/summary', authenticateUser, async (req, res) => {
       return acc
     }, {})
 
+    console.log(`Sales summary result: ${Object.keys(groupedSummary).length} tender types, ${summary.length} total sales`)
     res.json(Object.values(groupedSummary))
   } catch (error) {
     console.error('Get sales summary error:', error)
