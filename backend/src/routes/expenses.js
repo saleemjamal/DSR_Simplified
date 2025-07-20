@@ -2,10 +2,10 @@ const express = require('express')
 const router = express.Router()
 const { authenticateUser, requireRole } = require('../middleware/supabase')
 
-// Get expenses with store filtering
+// Get expenses with store filtering and date range support
 router.get('/', authenticateUser, async (req, res) => {
   try {
-    const { date, category, status, store_id, page = 1, limit = 50 } = req.query
+    const { date, dateFrom, dateTo, category, status, store_id, page = 1, limit = 50 } = req.query
     
     let query = req.supabase
       .from('expenses')
@@ -34,8 +34,39 @@ router.get('/', authenticateUser, async (req, res) => {
       // If no store_id specified, they see all stores
     }
 
+    // Apply date filtering with role-based restrictions
+    if (date) {
+      // Single date filter (backwards compatibility)
+      query = query.eq('expense_date', date)
+    } else if (dateFrom || dateTo) {
+      // Date range filtering with role-based restrictions
+      if (req.user.role === 'cashier') {
+        // Cashiers can only access last 7 days
+        const sevenDaysAgo = new Date()
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+        const maxFromDate = sevenDaysAgo.toISOString().split('T')[0]
+        
+        if (dateFrom && dateFrom < maxFromDate) {
+          return res.status(403).json({ 
+            error: 'Access denied: Cashiers can only view expenses from the last 7 days' 
+          })
+        }
+        
+        // Apply date range with cashier restrictions
+        if (dateFrom) query = query.gte('expense_date', Math.max(dateFrom, maxFromDate))
+        if (dateTo) query = query.lte('expense_date', dateTo)
+      } else {
+        // Super users, accounts_incharge, and store_managers have full historical access
+        if (dateFrom) query = query.gte('expense_date', dateFrom)
+        if (dateTo) query = query.lte('expense_date', dateTo)
+      }
+    } else {
+      // Default to today's date if no date filters provided
+      const today = new Date().toISOString().split('T')[0]
+      query = query.eq('expense_date', today)
+    }
+
     // Apply other filters
-    if (date) query = query.eq('expense_date', date)
     if (category) query = query.eq('category', category)
     if (status) query = query.eq('approval_status', status)
 
@@ -240,8 +271,8 @@ router.post('/', authenticateUser, async (req, res) => {
   }
 })
 
-// Approve/reject expense entry (managers only)
-router.patch('/:expenseId/approval', authenticateUser, requireRole(['store_manager', 'accounts_incharge']), async (req, res) => {
+// Approve/reject expense entry (super_user and accounts_incharge only)
+router.patch('/:expenseId/approval', authenticateUser, requireRole(['super_user', 'accounts_incharge']), async (req, res) => {
   try {
     const { expenseId } = req.params
     const { approval_status, approval_notes } = req.body

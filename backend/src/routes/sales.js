@@ -2,10 +2,10 @@ const express = require('express')
 const router = express.Router()
 const { authenticateUser, requireRole, requireStoreAccess } = require('../middleware/supabase')
 
-// Get sales with store filtering
+// Get sales with store filtering and date range support
 router.get('/', authenticateUser, async (req, res) => {
   try {
-    const { date, tender_type, store_id, page = 1, limit = 50 } = req.query
+    const { date, dateFrom, dateTo, tender_type, store_id, page = 1, limit = 50 } = req.query
     
     let query = req.supabase
       .from('sales')
@@ -34,10 +34,39 @@ router.get('/', authenticateUser, async (req, res) => {
       // If no store_id specified, they see all stores
     }
 
-    // Apply other filters
+    // Apply date filtering with role-based restrictions
     if (date) {
+      // Single date filter (backwards compatibility)
       query = query.eq('sale_date', date)
+    } else if (dateFrom || dateTo) {
+      // Date range filtering with role-based restrictions
+      if (req.user.role === 'cashier') {
+        // Cashiers can only access last 7 days
+        const sevenDaysAgo = new Date()
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+        const maxFromDate = sevenDaysAgo.toISOString().split('T')[0]
+        
+        if (dateFrom && dateFrom < maxFromDate) {
+          return res.status(403).json({ 
+            error: 'Access denied: Cashiers can only view sales from the last 7 days' 
+          })
+        }
+        
+        // Apply date range with cashier restrictions
+        if (dateFrom) query = query.gte('sale_date', Math.max(dateFrom, maxFromDate))
+        if (dateTo) query = query.lte('sale_date', dateTo)
+      } else {
+        // Super users, accounts_incharge, and store_managers have full historical access
+        if (dateFrom) query = query.gte('sale_date', dateFrom)
+        if (dateTo) query = query.lte('sale_date', dateTo)
+      }
+    } else {
+      // Default to today's date if no date filters provided
+      const today = new Date().toISOString().split('T')[0]
+      query = query.eq('sale_date', today)
     }
+
+    // Apply other filters
     if (tender_type) {
       query = query.eq('tender_type', tender_type)
     }
@@ -275,8 +304,8 @@ router.patch('/:saleId', authenticateUser, async (req, res) => {
   }
 })
 
-// Approve/reject sales entry (managers only)
-router.patch('/:saleId/approval', authenticateUser, requireRole(['store_manager', 'accounts_incharge']), async (req, res) => {
+// Approve/reject sales entry (super_user and accounts_incharge only)
+router.patch('/:saleId/approval', authenticateUser, requireRole(['super_user', 'accounts_incharge']), async (req, res) => {
   try {
     const { saleId } = req.params
     const { approval_status, approval_notes } = req.body
@@ -311,7 +340,7 @@ router.patch('/:saleId/approval', authenticateUser, requireRole(['store_manager'
 })
 
 // Convert hand bill to system bill
-router.patch('/:saleId/convert-handbill', authenticateUser, requireRole(['store_manager', 'accounts_incharge']), async (req, res) => {
+router.patch('/:saleId/convert-handbill', authenticateUser, requireRole(['super_user', 'accounts_incharge']), async (req, res) => {
   try {
     const { saleId } = req.params
     const { system_transaction_reference } = req.body
@@ -346,12 +375,43 @@ router.patch('/:saleId/convert-handbill', authenticateUser, requireRole(['store_
 // Get sales summary by tender type
 router.get('/summary', authenticateUser, async (req, res) => {
   try {
-    const { date = new Date().toISOString().split('T')[0], store_id } = req.query
+    const { date, dateFrom, dateTo, store_id } = req.query
     
     let query = req.supabase
       .from('sales')
       .select('tender_type, amount')
-      .eq('sale_date', date)
+
+    // Apply date filtering with role-based restrictions
+    if (date) {
+      // Single date filter (backwards compatibility)
+      query = query.eq('sale_date', date)
+    } else if (dateFrom || dateTo) {
+      // Date range filtering with role-based restrictions
+      if (req.user.role === 'cashier') {
+        // Cashiers can only access last 7 days
+        const sevenDaysAgo = new Date()
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+        const maxFromDate = sevenDaysAgo.toISOString().split('T')[0]
+        
+        if (dateFrom && dateFrom < maxFromDate) {
+          return res.status(403).json({ 
+            error: 'Access denied: Cashiers can only view sales from the last 7 days' 
+          })
+        }
+        
+        // Apply date range with cashier restrictions
+        if (dateFrom) query = query.gte('sale_date', Math.max(dateFrom, maxFromDate))
+        if (dateTo) query = query.lte('sale_date', dateTo)
+      } else {
+        // Super users, accounts_incharge, and store_managers have full historical access
+        if (dateFrom) query = query.gte('sale_date', dateFrom)
+        if (dateTo) query = query.lte('sale_date', dateTo)
+      }
+    } else {
+      // Default to today's date if no date filters provided
+      const today = new Date().toISOString().split('T')[0]
+      query = query.eq('sale_date', today)
+    }
 
     // Apply store filtering based on user role
     if (req.user.role === 'store_manager' || req.user.role === 'cashier') {

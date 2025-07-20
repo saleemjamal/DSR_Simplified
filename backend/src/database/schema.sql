@@ -82,6 +82,7 @@ CREATE TABLE sales (
     entered_by UUID NOT NULL REFERENCES users(id),
     approved_by UUID REFERENCES users(id),
     approval_status VARCHAR(20) DEFAULT 'pending' CHECK (approval_status IN ('pending', 'approved', 'rejected')),
+    approval_notes TEXT,
     custom_data JSONB DEFAULT '{}',
     metadata JSONB DEFAULT '{}',
     created_at TIMESTAMP DEFAULT NOW(),

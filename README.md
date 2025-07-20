@@ -32,6 +32,9 @@ A comprehensive daily reporting system for Poppat Jamals retail company to track
 - Multi-store sales and expense management
 - Modal-based entry forms with store filtering
 - Store assignment synchronization
+- **Enhanced Date Filtering**: Period-based filtering with role restrictions (Cashiers: 7 days, Managers: unlimited)
+- **Centralized Approval Workflow**: Dedicated dashboard for Super Users and Accounts Incharge with bulk operations
+- **Consolidated FilterBar**: Industry-standard unified filtering interface
 - Complete authentication flow
 
 ### ⚠️ Known Configuration
@@ -102,7 +105,7 @@ Access: http://localhost:3003
 
 ### 🟡 Accounts In-charge  
 - Financial oversight across stores
-- Approval workflows
+- **Centralized approval workflows** (see [Approval Workflow Documentation](docs/development/approval-workflow.md))
 - Cross-store reporting
 - User management (limited)
 
@@ -146,7 +149,9 @@ docs/
 ├── development/             # Development docs
 │   ├── database-schema.md  # Database design
 │   ├── implementation-guide.md # Code implementation
-│   └── requirements.md     # Product requirements
+│   ├── requirements.md     # Product requirements
+│   ├── approval-workflow.md # Approval system documentation
+│   └── date-filtering-system.md # Enhanced filtering documentation
 ├── architecture/           # System design
 │   ├── rbac-design.md     # Role-based access design
 │   └── location-features.md # Multi-store features

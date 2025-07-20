@@ -27,13 +27,31 @@ router.get('/', authenticateUser, async (req, res) => {
   }
 })
 
-// Create gift voucher
-router.post('/', authenticateUser, requireRole(['store_manager', 'accounts_incharge']), async (req, res) => {
+// Create gift voucher (everyone except accounts_incharge)
+router.post('/', authenticateUser, requireRole(['super_user', 'store_manager', 'cashier']), async (req, res) => {
   try {
-    const { original_amount, customer_name, customer_phone, notes } = req.body
+    const { original_amount, customer_name, customer_phone, notes, expiry_date } = req.body
 
+    // Validation
     if (!original_amount) {
-      return res.status(400).json({ error: 'Original amount required' })
+      return res.status(400).json({ error: 'Original amount is required' })
+    }
+    
+    if (parseFloat(original_amount) <= 0) {
+      return res.status(400).json({ error: 'Amount must be greater than 0' })
+    }
+
+    if (!expiry_date) {
+      return res.status(400).json({ error: 'Expiry date is required' })
+    }
+
+    // Validate expiry date is in the future
+    const expiryDate = new Date(expiry_date)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0) // Reset time to compare dates only
+    
+    if (expiryDate <= today) {
+      return res.status(400).json({ error: 'Expiry date must be in the future' })
     }
 
     // Generate voucher number
@@ -47,6 +65,7 @@ router.post('/', authenticateUser, requireRole(['store_manager', 'accounts_incha
       original_amount: parseFloat(original_amount),
       current_balance: parseFloat(original_amount),
       issued_date: new Date().toISOString().split('T')[0],
+      expiry_date: expiry_date,
       store_id: req.user.store_id,
       created_by: req.user.id,
       customer_name,
@@ -66,6 +85,183 @@ router.post('/', authenticateUser, requireRole(['store_manager', 'accounts_incha
   } catch (error) {
     console.error('Create voucher error:', error)
     res.status(500).json({ error: 'Failed to create gift voucher' })
+  }
+})
+
+// Search voucher by number
+router.get('/search/:voucherNumber', authenticateUser, async (req, res) => {
+  try {
+    const { voucherNumber } = req.params
+
+    const { data: voucher, error } = await req.supabase
+      .from('gift_vouchers')
+      .select(`
+        *,
+        store:stores!gift_vouchers_store_id_fkey(store_code, store_name),
+        created_by_user:users!gift_vouchers_created_by_fkey(first_name, last_name)
+      `)
+      .eq('voucher_number', voucherNumber)
+      .single()
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({ error: 'Voucher not found' })
+      }
+      throw error
+    }
+
+    res.json(voucher)
+  } catch (error) {
+    console.error('Search voucher error:', error)
+    res.status(500).json({ error: 'Failed to search voucher' })
+  }
+})
+
+// Redeem gift voucher (full amount only)
+router.patch('/:voucherNumber/redeem', authenticateUser, async (req, res) => {
+  try {
+    const { voucherNumber } = req.params
+    const { redeemed_by_user_id } = req.body // Optional - who redeemed it
+
+    // First, get the voucher
+    const { data: voucher, error: fetchError } = await req.supabase
+      .from('gift_vouchers')
+      .select('*')
+      .eq('voucher_number', voucherNumber)
+      .single()
+
+    if (fetchError) {
+      if (fetchError.code === 'PGRST116') {
+        return res.status(404).json({ error: 'Voucher not found' })
+      }
+      throw fetchError
+    }
+
+    // Validate voucher status
+    if (voucher.status !== 'active') {
+      return res.status(400).json({ 
+        error: `Cannot redeem voucher. Status: ${voucher.status}` 
+      })
+    }
+
+    // Check if voucher has expired
+    const today = new Date()
+    const expiryDate = new Date(voucher.expiry_date)
+    
+    if (expiryDate < today) {
+      // Mark as expired
+      await req.supabase
+        .from('gift_vouchers')
+        .update({ status: 'expired' })
+        .eq('voucher_number', voucherNumber)
+        
+      return res.status(400).json({ 
+        error: 'Voucher has expired and cannot be redeemed' 
+      })
+    }
+
+    // Check if full amount is available
+    if (voucher.current_balance !== voucher.original_amount) {
+      return res.status(400).json({ 
+        error: 'Voucher has been partially used. Only full amount redemption is allowed.' 
+      })
+    }
+
+    // Redeem the full voucher
+    const { data: updatedVoucher, error: updateError } = await req.supabase
+      .from('gift_vouchers')
+      .update({
+        status: 'redeemed',
+        current_balance: 0,
+        redeemed_by: redeemed_by_user_id || req.user.id
+      })
+      .eq('voucher_number', voucherNumber)
+      .select()
+      .single()
+
+    if (updateError) throw updateError
+
+    res.json({
+      message: 'Gift voucher redeemed successfully',
+      voucher: updatedVoucher,
+      redeemed_amount: voucher.original_amount
+    })
+  } catch (error) {
+    console.error('Redeem voucher error:', error)
+    res.status(500).json({ error: 'Failed to redeem gift voucher' })
+  }
+})
+
+// Cancel voucher (admin only)
+router.patch('/:voucherNumber/cancel', authenticateUser, requireRole(['super_user', 'accounts_incharge']), async (req, res) => {
+  try {
+    const { voucherNumber } = req.params
+    const { reason } = req.body
+
+    // First get the voucher to preserve existing notes
+    const { data: existingVoucher, error: fetchError } = await req.supabase
+      .from('gift_vouchers')
+      .select('notes')
+      .eq('voucher_number', voucherNumber)
+      .eq('status', 'active')
+      .single()
+
+    if (fetchError) {
+      if (fetchError.code === 'PGRST116') {
+        return res.status(404).json({ error: 'Active voucher not found' })
+      }
+      throw fetchError
+    }
+
+    const { data: updatedVoucher, error } = await req.supabase
+      .from('gift_vouchers')
+      .update({
+        status: 'cancelled',
+        notes: reason ? `${existingVoucher.notes || ''}\nCancelled: ${reason}` : existingVoucher.notes
+      })
+      .eq('voucher_number', voucherNumber)
+      .eq('status', 'active') // Only cancel active vouchers
+      .select()
+      .single()
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({ error: 'Active voucher not found' })
+      }
+      throw error
+    }
+
+    res.json({
+      message: 'Gift voucher cancelled successfully',
+      voucher: updatedVoucher
+    })
+  } catch (error) {
+    console.error('Cancel voucher error:', error)
+    res.status(500).json({ error: 'Failed to cancel gift voucher' })
+  }
+})
+
+// Check and update expired vouchers (utility endpoint)
+router.post('/update-expired', authenticateUser, requireRole(['super_user', 'accounts_incharge']), async (req, res) => {
+  try {
+    const today = new Date().toISOString().split('T')[0]
+    
+    const { data: expiredVouchers, error } = await req.supabase
+      .from('gift_vouchers')
+      .update({ status: 'expired' })
+      .eq('status', 'active')
+      .lt('expiry_date', today)
+      .select()
+
+    if (error) throw error
+
+    res.json({
+      message: `Updated ${expiredVouchers.length} expired vouchers`,
+      expired_count: expiredVouchers.length
+    })
+  } catch (error) {
+    console.error('Update expired vouchers error:', error)
+    res.status(500).json({ error: 'Failed to update expired vouchers' })
   }
 })
 

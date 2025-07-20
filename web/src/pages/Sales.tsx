@@ -37,13 +37,16 @@ const Sales = () => {
   
   // Filter state for viewing transactions
   const [viewFilter, setViewFilter] = useState({
+    period: 'today',
+    dateFrom: format(new Date(), 'yyyy-MM-dd'),
+    dateTo: format(new Date(), 'yyyy-MM-dd'),
     store_id: '',
     store_name: undefined as string | undefined
   })
 
   const { user } = useAuth()
   const needsStoreColumn = user?.role === 'super_user' || user?.role === 'accounts_incharge'
-  const canApprove = user?.role === 'store_manager' || user?.role === 'accounts_incharge'
+  const canApprove = user?.role === 'super_user' || user?.role === 'accounts_incharge'
 
   useEffect(() => {
     loadSales()
@@ -55,8 +58,19 @@ const Sales = () => {
       setError('')
       
       const params: any = { 
-        date: format(new Date(), 'yyyy-MM-dd'),
         limit: 50 
+      }
+      
+      // Add date filtering based on current filter state
+      if (viewFilter.dateFrom && viewFilter.dateTo) {
+        if (viewFilter.dateFrom === viewFilter.dateTo) {
+          // Single date filter
+          params.date = viewFilter.dateFrom
+        } else {
+          // Date range filter
+          params.dateFrom = viewFilter.dateFrom
+          params.dateTo = viewFilter.dateTo
+        }
       }
       
       // Add store filter if selected
@@ -141,7 +155,7 @@ const Sales = () => {
         <CardContent>
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
             <Typography variant="h6">
-              Today's Sales Entries
+              Sales Entries
             </Typography>
             <Chip 
               icon={<Receipt />}
@@ -262,7 +276,7 @@ const Sales = () => {
                         <Typography color="text.secondary">
                           {viewFilter.store_id ? 
                             `No sales entries found for ${viewFilter.store_name}` :
-                            'No sales entries found for today'
+                            'No sales entries found for the selected period'
                           }
                         </Typography>
                         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>

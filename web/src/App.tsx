@@ -9,6 +9,7 @@ import Expenses from './pages/Expenses'
 import Vouchers from './pages/Vouchers'
 import Damage from './pages/Damage'
 import Reports from './pages/Reports'
+import Approvals from './pages/Approvals'
 import Admin from './pages/Admin'
 import Layout from './components/Layout'
 
@@ -33,6 +34,11 @@ function App() {
           <Route path="vouchers" element={<Vouchers />} />
           <Route path="damage" element={<Damage />} />
           <Route path="reports" element={<Reports />} />
+          <Route path="approvals" element={
+            <ProtectedRoute requiredRoles={['super_user', 'accounts_incharge']}>
+              <Approvals />
+            </ProtectedRoute>
+          } />
           <Route path="admin" element={
             <ProtectedRoute requiredRoles={['super_user']}>
               <Admin />

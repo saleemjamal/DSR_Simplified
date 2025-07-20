@@ -31,7 +31,8 @@ import {
   AccountCircle,
   Logout,
   Business,
-  People
+  People,
+  CheckCircle
 } from '@mui/icons-material'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
@@ -52,6 +53,12 @@ const navItems: NavItem[] = [
   { text: 'Gift Vouchers', icon: <CardGiftcard />, path: '/vouchers' },
   { text: 'Damage Reports', icon: <ReportProblem />, path: '/damage' },
   { text: 'Reports', icon: <Assessment />, path: '/reports' },
+  { 
+    text: 'Approvals', 
+    icon: <CheckCircle />, 
+    path: '/approvals',
+    roles: ['super_user', 'accounts_incharge']
+  },
   { 
     text: 'Administration', 
     icon: <Settings />, 

@@ -39,6 +39,10 @@ The Daily Reporting System is a comprehensive cash management and reporting solu
   - GV (Gift Vouchers) - customer payments via gift vouchers
 - **Hand Bill Conversion**: Daily conversion from hand bills to system bills (Store Manager)
 - **Sales Validation**: Automatic calculations and reconciliation checks
+- **Centralized Approval System**: Dedicated approval dashboard for Super Users and Accounts Incharge
+- **Bulk Approval Operations**: Multi-select approval for efficient processing
+- **Enhanced Date Filtering**: Period-based filtering (Today, Yesterday, Last 7 Days, This Week, Last Week, This Month, Last Month)
+- **Role-Based Historical Access**: Cashiers limited to 7 days, unlimited access for Managers and above
 
 #### 5.2 Cash Management
 - **Petty Cash Float**: Track opening, closing, and adjustments
@@ -50,7 +54,9 @@ The Daily Reporting System is a comprehensive cash management and reporting solu
 - **Real-time Entry**: Capture expenses as they occur
 - **Staff Ownership Tracking**: Track which staff member made each expense
 - **Voucher Management**: Upload physical voucher images for verification
-- **Approval Workflows**: Configurable approval thresholds
+- **Centralized Approval Workflows**: Dedicated approval dashboard for Super Users and Accounts Incharge
+- **Bulk Approval Operations**: Multi-select approval for efficient processing
+- **Historical Data Access**: Role-based date filtering (Cashiers: 7 days, Managers: unlimited)
 - **Petty Cash Allocation**: Track petty cash top-ups and usage
 - **Expense Categories**: Staff welfare (tea, coffee), logistics, miscellaneous
 
@@ -74,20 +80,29 @@ The Daily Reporting System is a comprehensive cash management and reporting solu
 - **Damage Report Alerts**: Immediate notifications for quality control issues
 - **Configurable Escalation**: Custom alert rules per store and transaction type
 
-#### 5.7 Reporting
+#### 5.7 Approval Management
+- **Centralized Approval Dashboard**: Dedicated interface for pending approvals across all transaction types
+- **Role-Based Approval Authority**: Only Super Users and Accounts Incharge can approve transactions
+- **Bulk Approval Operations**: Multi-select functionality for efficient batch processing
+- **Approval Status Tracking**: Real-time status updates with approval history and notes
+- **Cross-Transaction Type Support**: Unified approval interface for sales, expenses, and future transaction types
+- **Scalable Architecture**: Framework ready for handbills, damage reports, and other approval workflows
+
+#### 5.8 Reporting
 - **Daily Sales Summary**: Breakdown by tender type and location
 - **Cash Reconciliation Reports**: Daily, weekly, monthly cash position
 - **Expense Reports**: Categorized expense analysis with approval status
 - **Multi-store Consolidated Reports**: Cross-location performance analysis
 - **Audit Reports**: Complete transaction history for compliance
+- **Historical Data Access**: Enhanced date filtering with role-based restrictions
 
-#### 5.8 Multi-location Support
+#### 5.9 Multi-location Support
 - **Store Management**: Individual store configuration and settings
 - **Centralized Reporting**: Consolidated view across all 5 locations
 - **Role-based Access**: Location-specific permissions and restrictions
 - **Scalability**: Architecture supports additional store locations
 
-#### 5.9 User Management
+#### 5.10 User Management
 - **Hybrid Authentication System**: Google SSO for management, local accounts for cashiers
 - **Google Workspace Integration**: SSO with @poppatjamals.com email accounts for management roles
 - **Cashier Account Management**: Store managers create simple username/password accounts for cashiers
@@ -99,7 +114,7 @@ The Daily Reporting System is a comprehensive cash management and reporting solu
 - Local Accounts: Cashiers (no company email required)
 - Account Creation: Store managers can create/manage cashier accounts for their store
 
-#### 5.10 Mobile Application Features
+#### 5.11 Mobile Application Features
 - **Quick Sales Entry**: Simplified forms for fast tender type entry
 - **Hybrid Login**: Google SSO for managers, simple username/password for cashiers
 - **Role-based Interface**: Different features available per user role
@@ -133,7 +148,9 @@ The Daily Reporting System is a comprehensive cash management and reporting solu
 
 #### Accounts Incharge
 - As an Accounts Incharge, I want to view financial data across all stores so that I can prepare consolidated reports
-- As an Accounts Incharge, I want to approve expense requests so that spending is controlled
+- As an Accounts Incharge, I want to access a centralized approval dashboard so that I can efficiently manage all pending transactions
+- As an Accounts Incharge, I want to bulk approve multiple transactions so that processing is efficient
+- As an Accounts Incharge, I want to filter approvals by date and store so that I can focus on specific periods or locations
 - As an Accounts Incharge, I want to track outstanding gift voucher liability so that financial statements are accurate
 - As an Accounts Incharge, I want to receive escalated credit payment alerts so that collections are managed effectively
 - As an Accounts Incharge, I want to generate cash reconciliation reports so that discrepancies can be identified
@@ -143,6 +160,8 @@ The Daily Reporting System is a comprehensive cash management and reporting solu
 #### Super User
 - As a Super User, I want to integrate with Google Workspace so that @poppatjamals.com users can login seamlessly
 - As a Super User, I want to manage user accounts and permissions so that system access is controlled
+- As a Super User, I want to access a centralized approval dashboard so that I can efficiently manage all pending transactions
+- As a Super User, I want to bulk approve multiple transactions so that processing is efficient
 - As a Super User, I want to configure multi-stage alert rules so that business processes are properly escalated
 - As a Super User, I want to configure system settings so that business rules are enforced
 - As a Super User, I want to view system-wide reports so that overall business performance can be monitored
@@ -189,14 +208,18 @@ The Daily Reporting System is a comprehensive cash management and reporting solu
 #### 8.1 Sales Entry Rules
 - Sales data must be entered by 12pm for the previous day
 - Hand bills must be converted to system bills within 24 hours
-- All sales entries require manager approval for amounts above threshold
+- All sales entries require approval from Super Users or Accounts Incharge only
+- Store Managers no longer have approval authority
 - Cash sales require physical cash reconciliation
+- Historical data access limited to 7 days for Cashiers, unlimited for Managers and above
 
 #### 8.2 Expense Management Rules
 - Expense entries must include physical voucher reference
-- Expenses above defined threshold require approval
+- All expenses require approval from Super Users or Accounts Incharge only
+- Store Managers no longer have approval authority
 - Petty cash cannot exceed maximum allocation limit
 - All expense categories must be pre-defined
+- Historical data access limited to 7 days for Cashiers, unlimited for Managers and above
 
 #### 8.3 Access Control Rules
 - Users can only access data for assigned locations

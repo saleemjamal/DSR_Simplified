@@ -189,6 +189,7 @@ export interface ExpenseFormData {
 
 export interface VoucherFormData {
   original_amount: number
+  expiry_date: string
   customer_name?: string
   customer_phone?: string
   notes?: string

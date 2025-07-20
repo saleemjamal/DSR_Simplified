@@ -296,8 +296,23 @@ export const vouchersApi = {
     return response.data
   },
 
-  redeem: async (voucherNumber: string, amount: number): Promise<ApiResponse<GiftVoucher>> => {
-    const response = await api.patch<ApiResponse<GiftVoucher>>(`/vouchers/${voucherNumber}/redeem`, { amount })
+  search: async (voucherNumber: string): Promise<GiftVoucher> => {
+    const response = await api.get<GiftVoucher>(`/vouchers/search/${voucherNumber}`)
+    return response.data
+  },
+  
+  redeem: async (voucherNumber: string, redeemed_by_user_id?: string): Promise<ApiResponse<GiftVoucher>> => {
+    const response = await api.patch<ApiResponse<GiftVoucher>>(`/vouchers/${voucherNumber}/redeem`, { redeemed_by_user_id })
+    return response.data
+  },
+  
+  cancel: async (voucherNumber: string, reason?: string): Promise<ApiResponse<GiftVoucher>> => {
+    const response = await api.patch<ApiResponse<GiftVoucher>>(`/vouchers/${voucherNumber}/cancel`, { reason })
+    return response.data
+  },
+  
+  updateExpired: async (): Promise<{ message: string; expired_count: number }> => {
+    const response = await api.post<{ message: string; expired_count: number }>('/vouchers/update-expired')
     return response.data
   }
 }
