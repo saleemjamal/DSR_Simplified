@@ -5,6 +5,7 @@ const { authenticateUser, requireRole, requireStoreAccess } = require('../middle
 // Get all stores (super users and accounts_incharge)
 router.get('/', authenticateUser, requireRole(['super_user', 'accounts_incharge']), async (req, res) => {
   try {
+    
     const { data: stores, error } = await req.supabase
       .from('stores')
       .select(`
@@ -121,8 +122,6 @@ router.post('/', authenticateUser, requireRole(['super_user']), async (req, res)
 
     // Synchronize user store assignment if manager is assigned
     if (manager_id && newStore) {
-      console.log(`Syncing store assignment: Setting user ${manager_id} store_id to ${newStore.id}`)
-      
       const { error: userUpdateError } = await req.supabase
         .from('users')
         .update({ store_id: newStore.id })
@@ -131,8 +130,6 @@ router.post('/', authenticateUser, requireRole(['super_user']), async (req, res)
       if (userUpdateError) {
         console.error('Failed to sync user store assignment:', userUpdateError)
         // Continue with store creation but log the issue
-      } else {
-        console.log('Successfully synced user store assignment')
       }
     }
 
@@ -302,8 +299,6 @@ router.patch('/:storeId', authenticateUser, requireRole(['super_user']), async (
     // Synchronize user store assignments
     // 1. Remove store assignment from previous manager (if different)
     if (currentStore.manager_id && currentStore.manager_id !== manager_id) {
-      console.log(`Removing store assignment from previous manager: ${currentStore.manager_id}`)
-      
       const { error: prevManagerError } = await req.supabase
         .from('users')
         .update({ store_id: null })
@@ -316,8 +311,6 @@ router.patch('/:storeId', authenticateUser, requireRole(['super_user']), async (
     
     // 2. Assign store to new manager (if provided)
     if (manager_id) {
-      console.log(`Syncing store assignment: Setting user ${manager_id} store_id to ${storeId}`)
-      
       const { error: userUpdateError } = await req.supabase
         .from('users')
         .update({ store_id: storeId })
@@ -325,8 +318,6 @@ router.patch('/:storeId', authenticateUser, requireRole(['super_user']), async (
       
       if (userUpdateError) {
         console.error('Failed to sync new manager store assignment:', userUpdateError)
-      } else {
-        console.log('Successfully synced new manager store assignment')
       }
     }
 

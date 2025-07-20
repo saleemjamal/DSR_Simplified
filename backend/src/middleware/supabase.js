@@ -112,7 +112,10 @@ const requireRole = (roles) => {
     const userRole = req.user.role
     const allowedRoles = Array.isArray(roles) ? roles : [roles]
 
+    console.log(`requireRole check: User ${req.user.email} has role '${userRole}', required: [${allowedRoles.join(', ')}]`)
+
     if (!allowedRoles.includes(userRole)) {
+      console.log(`requireRole DENIED: User ${req.user.email} with role '${userRole}' not in [${allowedRoles.join(', ')}]`)
       return res.status(403).json({ 
         error: 'Insufficient permissions',
         required: allowedRoles,
@@ -120,6 +123,7 @@ const requireRole = (roles) => {
       })
     }
 
+    console.log(`requireRole GRANTED: User ${req.user.email} with role '${userRole}' has access`)
     next()
   }
 }

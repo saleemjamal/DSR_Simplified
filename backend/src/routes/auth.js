@@ -46,7 +46,6 @@ router.post('/login/local', async (req, res) => {
       
       if (managedStore) {
         effectiveStoreId = managedStore.id
-        console.log(`Local login: User ${user.id} manages store ${managedStore.id}`)
       }
     }
 
@@ -86,7 +85,6 @@ router.post('/login/local', async (req, res) => {
 router.post('/login/google', async (req, res) => {
   try {
     const { token } = req.body
-    console.log('Google login attempt with token:', token?.substring(0, 50) + '...')
 
     if (!token) {
       return res.status(400).json({ error: 'Google token required' })
@@ -94,7 +92,6 @@ router.post('/login/google', async (req, res) => {
 
     // Verify Google token with Supabase
     const { data: { user }, error } = await supabase.auth.getUser(token)
-    console.log('Supabase auth result:', { user: user?.email, error: error?.message })
     
     if (error || !user) {
       console.error('Supabase auth error:', error)
@@ -175,7 +172,6 @@ router.post('/login/google', async (req, res) => {
       
       if (managedStore) {
         effectiveStoreId = managedStore.id
-        console.log(`Google login: User ${finalUser.id} manages store ${managedStore.id}`)
       }
     }
 
@@ -207,12 +203,6 @@ router.post('/users', authenticateUser, async (req, res) => {
   try {
     const { password, email, first_name, last_name, role } = req.body
 
-    console.log('POST /users - Request body:', req.body)
-    console.log('POST /users - User context:', {
-      userId: req.user?.id,
-      userRole: req.user?.role,
-      userStoreId: req.user?.store_id
-    })
 
     // Validation
     if (!email || !first_name || !last_name || !role) {
@@ -362,6 +352,40 @@ router.post('/users/cashier', authenticateUser, requireRole('store_manager'), as
   }
 })
 
+// Debug endpoint to check user token and permissions
+router.get('/debug', authenticateUser, async (req, res) => {
+  try {
+    
+    // Get fresh user from database
+    const { data: dbUser, error } = await req.supabase
+      .from('users')
+      .select('*')
+      .eq('id', req.user.id)
+      .single()
+    
+    if (!error && dbUser) {
+    }
+    
+    res.json({
+      tokenUser: {
+        id: req.user.id,
+        email: req.user.email,
+        role: req.user.role,
+        store_id: req.user.store_id
+      },
+      dbUser: dbUser ? {
+        id: dbUser.id,
+        email: dbUser.email,
+        role: dbUser.role,
+        store_id: dbUser.store_id
+      } : null
+    })
+  } catch (error) {
+    console.error('Debug error:', error)
+    res.status(500).json({ error: 'Debug failed' })
+  }
+})
+
 // Get current user profile
 router.get('/profile', authenticateUser, async (req, res) => {
   try {
@@ -389,7 +413,6 @@ router.get('/profile', authenticateUser, async (req, res) => {
       
       if (!directStoreError && directStore) {
         storeInfo = directStore
-        console.log(`User ${user.id} has direct store assignment: ${directStore.store_code}`)
       }
     }
 
@@ -403,7 +426,6 @@ router.get('/profile', authenticateUser, async (req, res) => {
       
       if (!managedStoreError && managedStore) {
         storeInfo = managedStore
-        console.log(`User ${user.id} manages store: ${managedStore.store_code}`)
       }
     }
 
@@ -413,7 +435,6 @@ router.get('/profile', authenticateUser, async (req, res) => {
       stores: storeInfo
     }
 
-    console.log(`Profile loaded for user ${user.id} (${user.email}): Store = ${storeInfo?.store_code || 'None'}`)
     res.json(userWithStore)
   } catch (error) {
     console.error('Get profile error:', error)
@@ -565,7 +586,6 @@ router.patch('/users/:userId/password', authenticateUser, requireRole(['super_us
 // Sync store assignments (super users only) - fixes store_id/manager_id mismatches
 router.post('/sync-store-assignments', authenticateUser, requireRole(['super_user']), async (req, res) => {
   try {
-    console.log('Starting store assignment synchronization...')
     
     // Get all stores with managers
     const { data: stores, error: storesError } = await req.supabase
@@ -581,7 +601,6 @@ router.post('/sync-store-assignments', authenticateUser, requireRole(['super_use
     let totalSynced = 0
     
     for (const store of stores) {
-      console.log(`Syncing store ${store.store_code} (${store.id}) with manager ${store.manager_id}`)
       
       // Update the manager's store_id to match
       const { data: updatedUser, error: updateError } = await req.supabase
@@ -600,7 +619,6 @@ router.post('/sync-store-assignments', authenticateUser, requireRole(['super_use
           error: updateError.message
         })
       } else {
-        console.log(`Successfully synced ${updatedUser.first_name} ${updatedUser.last_name} to store ${store.store_code}`)
         syncResults.push({
           store_code: store.store_code,
           manager_id: store.manager_id,

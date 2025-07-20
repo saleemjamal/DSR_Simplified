@@ -59,12 +59,6 @@ router.post('/batch', authenticateUser, async (req, res) => {
   try {
     const { expense_date, expenses } = req.body
 
-    console.log('POST /expenses/batch - Request body:', req.body)
-    console.log('POST /expenses/batch - User context:', {
-      userId: req.user?.id,
-      storeId: req.user?.store_id,
-      role: req.user?.role
-    })
 
     // Validation
     if (!expense_date || !expenses || !Array.isArray(expenses)) {
@@ -133,7 +127,6 @@ router.post('/batch', authenticateUser, async (req, res) => {
       requested_by: req.user.id
     }))
 
-    console.log('Expense data to insert (batch):', expenseData)
 
     // Insert all expense entries in a single transaction
     const { data: newExpenses, error } = await req.supabase
@@ -142,11 +135,8 @@ router.post('/batch', authenticateUser, async (req, res) => {
       .select()
 
     if (error) {
-      console.error('Supabase batch insert error:', error)
       throw error
     }
-
-    console.log('Expense entries created successfully (batch):', newExpenses)
 
     res.status(201).json({
       message: `${newExpenses.length} expense entries created successfully`,
@@ -154,16 +144,9 @@ router.post('/batch', authenticateUser, async (req, res) => {
       count: newExpenses.length
     })
   } catch (error) {
-    console.error('Create batch expenses error - Full details:', {
-      message: error.message,
-      code: error.code,
-      details: error.details,
-      hint: error.hint,
-      stack: error.stack
-    })
+    console.error('Create batch expenses error:', error)
     res.status(500).json({ 
-      error: 'Failed to create expense entries',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: 'Failed to create expense entries'
     })
   }
 })
@@ -171,12 +154,6 @@ router.post('/batch', authenticateUser, async (req, res) => {
 // Create expense entry
 router.post('/', authenticateUser, async (req, res) => {
   try {
-    console.log('POST /expenses - Request body:', req.body)
-    console.log('POST /expenses - User context:', {
-      userId: req.user?.id,
-      storeId: req.user?.store_id,
-      role: req.user?.role
-    })
 
     const {
       expense_date,
@@ -190,7 +167,6 @@ router.post('/', authenticateUser, async (req, res) => {
 
     // Validation
     if (!expense_date || !category || !description || !amount) {
-      console.log('Validation failed:', { expense_date, category, description, amount })
       return res.status(400).json({ 
         error: 'Expense date, category, description, and amount are required' 
       })
@@ -241,7 +217,6 @@ router.post('/', authenticateUser, async (req, res) => {
       requested_by: req.user.id
     }
 
-    console.log('Expense data to insert:', expenseData)
 
     const { data: newExpense, error } = await req.supabase
       .from('expenses')
@@ -250,27 +225,17 @@ router.post('/', authenticateUser, async (req, res) => {
       .single()
 
     if (error) {
-      console.error('Supabase insert error:', error)
       throw error
     }
-
-    console.log('Expense entry created successfully:', newExpense)
 
     res.status(201).json({
       message: 'Expense entry created successfully',
       expense: newExpense
     })
   } catch (error) {
-    console.error('Create expense error - Full details:', {
-      message: error.message,
-      code: error.code,
-      details: error.details,
-      hint: error.hint,
-      stack: error.stack
-    })
+    console.error('Create expense error:', error)
     res.status(500).json({ 
-      error: 'Failed to create expense entry',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: 'Failed to create expense entry'
     })
   }
 })

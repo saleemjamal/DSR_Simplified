@@ -129,6 +129,11 @@ export const authApi = {
   }> => {
     const response = await api.post('/auth/sync-store-assignments')
     return response.data
+  },
+
+  debug: async (): Promise<any> => {
+    const response = await api.get('/auth/debug')
+    return response.data
   }
 }
 

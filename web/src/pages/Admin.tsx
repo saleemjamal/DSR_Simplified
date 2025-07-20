@@ -372,6 +372,21 @@ const Admin = () => {
     }
   }
 
+  const handleAuthDebug = async () => {
+    try {
+      const debugInfo = await authApi.debug()
+      console.log('=== AUTH DEBUG INFO ===')
+      console.log('Token User:', debugInfo.tokenUser)
+      console.log('Database User:', debugInfo.dbUser)
+      console.log('Current User from Context:', currentUser)
+      
+      setSuccess(`Debug info logged to console. Check browser dev tools.`)
+    } catch (err: any) {
+      console.error('Auth debug failed:', err)
+      setError(`Auth debug failed: ${err.response?.data?.error || err.message}`)
+    }
+  }
+
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'super_user': return 'error'
@@ -521,14 +536,24 @@ const Admin = () => {
                   </Button>
                 )}
                 {currentUser?.role === 'super_user' && (
-                  <Button
-                    variant="outlined"
-                    color="secondary"
-                    onClick={handleSyncStoreAssignments}
-                    disabled={submitting}
-                  >
-                    {submitting ? 'Syncing...' : 'Sync Store Assignments'}
-                  </Button>
+                  <>
+                    <Button
+                      variant="outlined"
+                      color="secondary"
+                      onClick={handleSyncStoreAssignments}
+                      disabled={submitting}
+                    >
+                      {submitting ? 'Syncing...' : 'Sync Store Assignments'}
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      color="info"
+                      onClick={handleAuthDebug}
+                      size="small"
+                    >
+                      Debug Auth
+                    </Button>
+                  </>
                 )}
               </Box>
             </Box>

@@ -64,12 +64,6 @@ router.post('/batch', authenticateUser, async (req, res) => {
   try {
     const { sale_date, tenders } = req.body
 
-    console.log('POST /sales/batch - Request body:', req.body)
-    console.log('POST /sales/batch - User context:', {
-      userId: req.user?.id,
-      storeId: req.user?.store_id,
-      role: req.user?.role
-    })
 
     // Validation
     if (!sale_date || !tenders || !Array.isArray(tenders)) {
@@ -136,7 +130,6 @@ router.post('/batch', authenticateUser, async (req, res) => {
       entered_by: req.user.id
     }))
 
-    console.log('Sales data to insert (batch):', salesData)
 
     // Insert all sales entries in a single transaction
     const { data: newSales, error } = await req.supabase
@@ -145,11 +138,8 @@ router.post('/batch', authenticateUser, async (req, res) => {
       .select()
 
     if (error) {
-      console.error('Supabase batch insert error:', error)
       throw error
     }
-
-    console.log('Sales entries created successfully (batch):', newSales)
 
     res.status(201).json({
       message: `${newSales.length} sales entries created successfully`,
@@ -157,16 +147,9 @@ router.post('/batch', authenticateUser, async (req, res) => {
       count: newSales.length
     })
   } catch (error) {
-    console.error('Create batch sales error - Full details:', {
-      message: error.message,
-      code: error.code,
-      details: error.details,
-      hint: error.hint,
-      stack: error.stack
-    })
+    console.error('Create batch sales error:', error)
     res.status(500).json({ 
-      error: 'Failed to create sales entries',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: 'Failed to create sales entries'
     })
   }
 })
@@ -174,12 +157,6 @@ router.post('/batch', authenticateUser, async (req, res) => {
 // Create new sales entry
 router.post('/', authenticateUser, async (req, res) => {
   try {
-    console.log('POST /sales - Request body:', req.body)
-    console.log('POST /sales - User context:', {
-      userId: req.user?.id,
-      storeId: req.user?.store_id,
-      role: req.user?.role
-    })
 
     const {
       sale_date,
@@ -192,7 +169,6 @@ router.post('/', authenticateUser, async (req, res) => {
 
     // Validation
     if (!sale_date || !tender_type || !amount) {
-      console.log('Validation failed:', { sale_date, tender_type, amount })
       return res.status(400).json({ 
         error: 'Sale date, tender type, and amount are required' 
       })
@@ -242,7 +218,6 @@ router.post('/', authenticateUser, async (req, res) => {
       entered_by: req.user.id
     }
 
-    console.log('Sales data to insert:', salesData)
 
     const { data: newSale, error } = await req.supabase
       .from('sales')
@@ -251,27 +226,17 @@ router.post('/', authenticateUser, async (req, res) => {
       .single()
 
     if (error) {
-      console.error('Supabase insert error:', error)
       throw error
     }
-
-    console.log('Sales entry created successfully:', newSale)
 
     res.status(201).json({
       message: 'Sales entry created successfully',
       sale: newSale
     })
   } catch (error) {
-    console.error('Create sales error - Full details:', {
-      message: error.message,
-      code: error.code,
-      details: error.details,
-      hint: error.hint,
-      stack: error.stack
-    })
+    console.error('Create sales error:', error)
     res.status(500).json({ 
-      error: 'Failed to create sales entry',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: 'Failed to create sales entry'
     })
   }
 })
@@ -397,14 +362,10 @@ router.get('/summary', authenticateUser, async (req, res) => {
         })
       }
       query = query.eq('store_id', req.user.store_id)
-      console.log(`Sales summary: Filtering for store ${req.user.store_id} (${req.user.role})`)
     } else if (req.user.role === 'super_user' || req.user.role === 'accounts_incharge') {
       // Super users and accounts_incharge can see all stores, with optional filtering
       if (store_id) {
         query = query.eq('store_id', store_id)
-        console.log(`Sales summary: Filtering for specific store ${store_id}`)
-      } else {
-        console.log(`Sales summary: No store filter (all stores)`)
       }
     }
 
@@ -428,7 +389,6 @@ router.get('/summary', authenticateUser, async (req, res) => {
       return acc
     }, {})
 
-    console.log(`Sales summary result: ${Object.keys(groupedSummary).length} tender types, ${summary.length} total sales`)
     res.json(Object.values(groupedSummary))
   } catch (error) {
     console.error('Get sales summary error:', error)
