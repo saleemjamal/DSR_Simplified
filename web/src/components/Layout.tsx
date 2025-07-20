@@ -16,6 +16,7 @@ import {
   Menu,
   MenuItem,
   Divider,
+  Collapse,
   useTheme,
   useMediaQuery
 } from '@mui/material'
@@ -34,7 +35,12 @@ import {
   Business,
   People,
   CheckCircle,
-  Article
+  Article,
+  ExpandLess,
+  ExpandMore,
+  Payment,
+  Analytics,
+  AdminPanelSettings
 } from '@mui/icons-material'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
@@ -44,41 +50,72 @@ const DRAWER_WIDTH = 240
 interface NavItem {
   text: string
   icon: React.ReactElement
-  path: string
+  path?: string
   roles?: string[]
+  children?: NavItem[]
+  expandable?: boolean
 }
 
 const navItems: NavItem[] = [
   { text: 'Dashboard', icon: <Dashboard />, path: '/dashboard' },
-  { text: 'Sales', icon: <PointOfSale />, path: '/sales' },
-  { text: 'Expenses', icon: <Receipt />, path: '/expenses' },
-  { text: 'Gift Vouchers', icon: <CardGiftcard />, path: '/vouchers' },
-  { text: 'Sales Orders', icon: <ShoppingCart />, path: '/sales-orders' },
   { 
-    text: 'Hand Bills', 
-    icon: <Article />, 
-    path: '/hand-bills',
-    roles: ['store_manager', 'super_user', 'accounts_incharge']
-  },
-  { text: 'Damage Reports', icon: <ReportProblem />, path: '/damage' },
-  { text: 'Reports', icon: <Assessment />, path: '/reports' },
-  { 
-    text: 'Approvals', 
-    icon: <CheckCircle />, 
-    path: '/approvals',
-    roles: ['super_user', 'accounts_incharge']
+    text: 'Daily Operations', 
+    icon: <PointOfSale />, 
+    expandable: true,
+    children: [
+      { text: 'Sales Entry', icon: <PointOfSale />, path: '/sales' },
+      { text: 'Expenses', icon: <Receipt />, path: '/expenses' }
+    ]
   },
   { 
-    text: 'Administration', 
-    icon: <Settings />, 
-    path: '/admin',
-    roles: ['super_user']
+    text: 'Transaction Management', 
+    icon: <Payment />, 
+    expandable: true,
+    children: [
+      { text: 'Gift Vouchers', icon: <CardGiftcard />, path: '/vouchers' },
+      { text: 'Sales Orders', icon: <ShoppingCart />, path: '/sales-orders' },
+      { 
+        text: 'Hand Bills', 
+        icon: <Article />, 
+        path: '/hand-bills',
+        roles: ['store_manager', 'super_user', 'accounts_incharge']
+      }
+    ]
+  },
+  { 
+    text: 'Reports & Analytics', 
+    icon: <Analytics />, 
+    expandable: true,
+    children: [
+      { text: 'Reports', icon: <Assessment />, path: '/reports' },
+      { text: 'Damage Reports', icon: <ReportProblem />, path: '/damage' }
+    ]
+  },
+  { 
+    text: 'System Management', 
+    icon: <AdminPanelSettings />, 
+    expandable: true,
+    children: [
+      { 
+        text: 'Approvals', 
+        icon: <CheckCircle />, 
+        path: '/approvals',
+        roles: ['super_user', 'accounts_incharge']
+      },
+      { 
+        text: 'Administration', 
+        icon: <Settings />, 
+        path: '/admin',
+        roles: ['super_user']
+      }
+    ]
   }
 ]
 
 const Layout = () => {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [profileMenuAnchor, setProfileMenuAnchor] = useState<null | HTMLElement>(null)
+  const [expandedSections, setExpandedSections] = useState<string[]>(['Transaction Management'])
   
   const { user, logout, hasRole } = useAuth()
   const navigate = useNavigate()
@@ -109,6 +146,23 @@ const Layout = () => {
     if (isMobile) {
       setMobileOpen(false)
     }
+  }
+
+  const handleSectionToggle = (sectionName: string) => {
+    setExpandedSections(prev => 
+      prev.includes(sectionName)
+        ? prev.filter(name => name !== sectionName)
+        : [...prev, sectionName]
+    )
+  }
+
+  const isCurrentPath = (path?: string) => {
+    return path && location.pathname === path
+  }
+
+  const isInSection = (section: NavItem) => {
+    if (!section.children) return false
+    return section.children.some(child => child.path && location.pathname === child.path)
   }
 
   const getInitials = (firstName: string, lastName: string) => {
@@ -151,35 +205,118 @@ const Layout = () => {
       <Divider />
 
       {/* Navigation Items */}
-      <List>
-        {navItems
-          .filter(item => !item.roles || hasRole(item.roles))
-          .map((item) => (
-            <ListItem key={item.text} disablePadding>
-              <ListItemButton
-                selected={location.pathname === item.path}
-                onClick={() => handleNavigation(item.path)}
-                sx={{
-                  '&.Mui-selected': {
-                    backgroundColor: 'primary.light',
-                    color: 'primary.contrastText',
-                    '&:hover': {
-                      backgroundColor: 'primary.main'
-                    }
-                  }
-                }}
-              >
-                <ListItemIcon
+      <List sx={{ pt: 1 }}>
+        {navItems.map((item) => (
+          <Box key={item.text}>
+            {item.expandable ? (
+              <>
+                {/* Expandable Section Header */}
+                <ListItem disablePadding>
+                  <ListItemButton
+                    onClick={() => handleSectionToggle(item.text)}
+                    selected={isInSection(item)}
+                    sx={{
+                      borderRadius: 2,
+                      mx: 1,
+                      mb: 0.5,
+                      '&.Mui-selected': {
+                        backgroundColor: 'rgba(49, 130, 206, 0.08)',
+                        '&:hover': {
+                          backgroundColor: 'rgba(49, 130, 206, 0.12)'
+                        }
+                      }
+                    }}
+                  >
+                    <ListItemIcon sx={{ minWidth: 40 }}>
+                      {item.icon}
+                    </ListItemIcon>
+                    <ListItemText 
+                      primary={item.text}
+                      primaryTypographyProps={{
+                        fontSize: '0.875rem',
+                        fontWeight: 500
+                      }}
+                    />
+                    {expandedSections.includes(item.text) ? <ExpandLess /> : <ExpandMore />}
+                  </ListItemButton>
+                </ListItem>
+
+                {/* Collapsible Children */}
+                <Collapse in={expandedSections.includes(item.text)} timeout="auto" unmountOnExit>
+                  <List component="div" disablePadding>
+                    {item.children
+                      ?.filter(child => !child.roles || hasRole(child.roles))
+                      .map((child) => (
+                        <ListItem key={child.text} disablePadding>
+                          <ListItemButton
+                            selected={isCurrentPath(child.path)}
+                            onClick={() => child.path && handleNavigation(child.path)}
+                            sx={{
+                              pl: 6,
+                              borderRadius: 2,
+                              mx: 1,
+                              mb: 0.5,
+                              '&.Mui-selected': {
+                                backgroundColor: 'rgba(49, 130, 206, 0.12)',
+                                borderLeft: '3px solid',
+                                borderLeftColor: 'secondary.main',
+                                '&:hover': {
+                                  backgroundColor: 'rgba(49, 130, 206, 0.16)'
+                                }
+                              }
+                            }}
+                          >
+                            <ListItemIcon sx={{ minWidth: 36 }}>
+                              {child.icon}
+                            </ListItemIcon>
+                            <ListItemText 
+                              primary={child.text}
+                              primaryTypographyProps={{
+                                fontSize: '0.8125rem',
+                                fontWeight: isCurrentPath(child.path) ? 500 : 400
+                              }}
+                            />
+                          </ListItemButton>
+                        </ListItem>
+                      ))}
+                  </List>
+                </Collapse>
+              </>
+            ) : (
+              /* Non-expandable Item */
+              <ListItem disablePadding>
+                <ListItemButton
+                  selected={isCurrentPath(item.path)}
+                  onClick={() => item.path && handleNavigation(item.path)}
                   sx={{
-                    color: location.pathname === item.path ? 'primary.contrastText' : 'inherit'
+                    borderRadius: 2,
+                    mx: 1,
+                    mb: 0.5,
+                    '&.Mui-selected': {
+                      backgroundColor: 'rgba(49, 130, 206, 0.12)',
+                      borderLeft: '3px solid',
+                      borderLeftColor: 'secondary.main',
+                      '&:hover': {
+                        backgroundColor: 'rgba(49, 130, 206, 0.16)'
+                      }
+                    }
                   }}
                 >
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText primary={item.text} />
-              </ListItemButton>
-            </ListItem>
-          ))}
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary={item.text}
+                    primaryTypographyProps={{
+                      fontSize: '0.875rem',
+                      fontWeight: isCurrentPath(item.path) ? 500 : 400
+                    }}
+                  />
+                </ListItemButton>
+              </ListItem>
+            )}
+          </Box>
+        ))}
       </List>
     </Box>
   )
@@ -206,7 +343,21 @@ const Layout = () => {
           </IconButton>
           
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            {navItems.find(item => item.path === location.pathname)?.text || 'Dashboard'}
+            {(() => {
+              // Find current page title from hierarchical structure
+              for (const item of navItems) {
+                if (item.path === location.pathname) {
+                  return item.text
+                }
+                if (item.children) {
+                  const child = item.children.find(child => child.path === location.pathname)
+                  if (child) {
+                    return child.text
+                  }
+                }
+              }
+              return 'Dashboard'
+            })()}
           </Typography>
 
           {/* User Profile */}
