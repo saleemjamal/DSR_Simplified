@@ -117,6 +117,7 @@ export interface GiftVoucher {
   voucher_type: 'system_generated' | 'legacy' | 'manual'
   store_id: string
   created_by?: string
+  customer_id?: string       // NEW: Link to customer record
   customer_name?: string
   customer_phone?: string
   notes?: string
@@ -190,9 +191,10 @@ export interface ExpenseFormData {
 export interface VoucherFormData {
   original_amount: number
   expiry_date: string
-  customer_name?: string
-  customer_phone?: string
+  customer_name: string      // Now required
+  customer_phone: string     // Now required
   notes?: string
+  voucher_number?: string
 }
 
 // Dashboard types
@@ -207,4 +209,170 @@ export interface SalesSummary {
   tender_type: string
   total_amount: number
   count: number
+}
+
+// Customer types
+export interface Customer {
+  id: string
+  customer_name: string
+  customer_phone?: string
+  customer_email?: string
+  address?: string
+  credit_limit: number
+  total_outstanding: number
+  notes?: string
+  created_date: string
+  last_transaction_date?: string
+  created_at: string
+  updated_at: string
+}
+
+// Sales Orders types
+export interface SalesOrder {
+  id: string
+  store_id: string
+  order_number: string
+  customer_id: string
+  order_date: string
+  items_description: string
+  total_estimated_amount: number
+  advance_paid: number
+  status: 'pending' | 'converted' | 'cancelled'
+  erp_conversion_date?: string
+  erp_sale_bill_number?: string
+  notes?: string
+  created_by: string
+  converted_by?: string
+  created_at: string
+  updated_at: string
+  // Nested objects from backend joins
+  customers?: Customer
+  stores?: {
+    store_code: string
+    store_name: string
+  }
+  deposits?: Deposit[]
+}
+
+// Deposits types
+export interface Deposit {
+  id: string
+  store_id: string
+  deposit_date: string
+  deposit_type: 'sales_order' | 'other'
+  reference_id?: string
+  reference_type?: string
+  amount: number
+  payment_method: 'cash' | 'credit_card' | 'upi' | 'bank_transfer'
+  customer_id?: string
+  processed_by: string
+  notes?: string
+  created_at: string
+  updated_at: string
+  // Nested objects from backend joins
+  customers?: Customer
+  stores?: {
+    store_code: string
+    store_name: string
+  }
+  linked_sales_order?: {
+    order_number: string
+    total_estimated_amount: number
+    items_description: string
+    status: string
+  }
+}
+
+// Hand Bills types
+export interface HandBill {
+  id: string
+  store_id: string
+  hand_bill_number: string
+  sale_date: string
+  customer_id?: string
+  amount: number
+  items_description?: string
+  original_image_url?: string
+  status: 'pending' | 'converted' | 'cancelled'
+  conversion_date?: string
+  erp_sale_bill_number?: string
+  sale_bill_image_url?: string
+  converted_by?: string
+  notes?: string
+  created_by: string
+  created_at: string
+  updated_at: string
+  // Nested objects from backend joins
+  customers?: Customer
+  stores?: {
+    store_code: string
+    store_name: string
+  }
+}
+
+// Returns (RRN) types
+export interface Return {
+  id: string
+  store_id: string
+  return_date: string
+  customer_id?: string
+  return_amount: number
+  return_reason: string
+  original_bill_reference?: string
+  payment_method?: 'cash' | 'credit_card' | 'upi' | 'store_credit'
+  processed_by: string
+  notes?: string
+  created_at: string
+  updated_at: string
+  // Nested objects from backend joins
+  customers?: Customer
+  stores?: {
+    store_code: string
+    store_name: string
+  }
+}
+
+// Enhanced form types for new entities
+export interface SalesOrderFormData {
+  customer_id: string
+  items_description: string
+  total_estimated_amount: number
+  advance_paid?: number
+  notes?: string
+}
+
+export interface DepositFormData {
+  deposit_type: 'sales_order' | 'other'
+  reference_id?: string
+  reference_type?: string
+  amount: number
+  payment_method: 'cash' | 'credit_card' | 'upi' | 'bank_transfer'
+  customer_id?: string
+  notes?: string
+}
+
+export interface HandBillFormData {
+  customer_id?: string
+  amount: number
+  items_description?: string
+  original_image_url?: string
+  notes?: string
+}
+
+export interface ReturnFormData {
+  customer_id?: string
+  return_amount: number
+  return_reason: string
+  original_bill_reference?: string
+  payment_method?: 'cash' | 'credit_card' | 'upi' | 'store_credit'
+  notes?: string
+}
+
+export interface CustomerFormData {
+  customer_name: string
+  customer_phone?: string
+  customer_email?: string
+  address?: string
+  credit_limit?: number
+  notes?: string
 }

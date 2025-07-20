@@ -25,6 +25,7 @@ import {
   PointOfSale,
   Receipt,
   CardGiftcard,
+  ShoppingCart,
   ReportProblem,
   Assessment,
   Settings,
@@ -32,7 +33,8 @@ import {
   Logout,
   Business,
   People,
-  CheckCircle
+  CheckCircle,
+  Article
 } from '@mui/icons-material'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
@@ -51,6 +53,13 @@ const navItems: NavItem[] = [
   { text: 'Sales', icon: <PointOfSale />, path: '/sales' },
   { text: 'Expenses', icon: <Receipt />, path: '/expenses' },
   { text: 'Gift Vouchers', icon: <CardGiftcard />, path: '/vouchers' },
+  { text: 'Sales Orders', icon: <ShoppingCart />, path: '/sales-orders' },
+  { 
+    text: 'Hand Bills', 
+    icon: <Article />, 
+    path: '/hand-bills',
+    roles: ['store_manager', 'super_user', 'accounts_incharge']
+  },
   { text: 'Damage Reports', icon: <ReportProblem />, path: '/damage' },
   { text: 'Reports', icon: <Assessment />, path: '/reports' },
   { 

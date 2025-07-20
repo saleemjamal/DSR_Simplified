@@ -7,6 +7,8 @@ import Dashboard from './pages/Dashboard'
 import Sales from './pages/Sales'
 import Expenses from './pages/Expenses'
 import Vouchers from './pages/Vouchers'
+import SalesOrders from './pages/SalesOrders'
+import HandBills from './pages/HandBills'
 import Damage from './pages/Damage'
 import Reports from './pages/Reports'
 import Approvals from './pages/Approvals'
@@ -32,6 +34,12 @@ function App() {
           <Route path="sales" element={<Sales />} />
           <Route path="expenses" element={<Expenses />} />
           <Route path="vouchers" element={<Vouchers />} />
+          <Route path="sales-orders" element={<SalesOrders />} />
+          <Route path="hand-bills" element={
+            <ProtectedRoute requiredRoles={['store_manager', 'super_user', 'accounts_incharge']}>
+              <HandBills />
+            </ProtectedRoute>
+          } />
           <Route path="damage" element={<Damage />} />
           <Route path="reports" element={<Reports />} />
           <Route path="approvals" element={

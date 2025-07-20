@@ -30,7 +30,7 @@ router.get('/', authenticateUser, async (req, res) => {
 // Create gift voucher (everyone except accounts_incharge)
 router.post('/', authenticateUser, requireRole(['super_user', 'store_manager', 'cashier']), async (req, res) => {
   try {
-    const { original_amount, customer_name, customer_phone, notes, expiry_date } = req.body
+    const { original_amount, customer_name, customer_phone, notes, expiry_date, store_id, voucher_number } = req.body
 
     // Validation
     if (!original_amount) {
@@ -45,6 +45,23 @@ router.post('/', authenticateUser, requireRole(['super_user', 'store_manager', '
       return res.status(400).json({ error: 'Expiry date is required' })
     }
 
+    // Mandatory customer validation
+    if (!customer_name || customer_name.trim() === '') {
+      return res.status(400).json({ error: 'Customer name is required' })
+    }
+
+    if (!customer_phone || customer_phone.trim() === '') {
+      return res.status(400).json({ error: 'Customer phone is required' })
+    }
+
+    // Determine store_id (same pattern as other APIs)
+    let targetStoreId = store_id
+    if (req.user.role !== 'super_user' && req.user.role !== 'accounts_incharge') {
+      targetStoreId = req.user.store_id
+    } else if (!targetStoreId) {
+      return res.status(400).json({ error: 'Store selection is required' })
+    }
+
     // Validate expiry date is in the future
     const expiryDate = new Date(expiry_date)
     const today = new Date()
@@ -54,22 +71,94 @@ router.post('/', authenticateUser, requireRole(['super_user', 'store_manager', '
       return res.status(400).json({ error: 'Expiry date must be in the future' })
     }
 
-    // Generate voucher number
-    const { data: voucherNumber, error: numberError } = await req.supabase
-      .rpc('generate_voucher_number', { store_prefix: 'PJ' })
+    // Auto-create or find customer logic
+    let customer_id
+    
+    try {
+      // 1. Search for existing customer by phone (unique field)
+      const { data: existingCustomer, error: searchError } = await req.supabase
+        .from('customers')
+        .select('*')
+        .eq('customer_phone', customer_phone.trim())
+        .single()
 
-    if (numberError) throw numberError
+      if (existingCustomer) {
+        // Customer exists - use their ID
+        customer_id = existingCustomer.id
+        
+        // Update name if different (phone is primary key, name might change)
+        if (customer_name.trim() !== existingCustomer.customer_name) {
+          await req.supabase
+            .from('customers')
+            .update({ 
+              customer_name: customer_name.trim(),
+              last_transaction_date: new Date().toISOString().split('T')[0]
+            })
+            .eq('id', customer_id)
+        } else {
+          // Just update last transaction date
+          await req.supabase
+            .from('customers')
+            .update({ 
+              last_transaction_date: new Date().toISOString().split('T')[0]
+            })
+            .eq('id', customer_id)
+        }
+      } else {
+        // Customer doesn't exist - create new one
+        const { data: newCustomer, error: customerError } = await req.supabase
+          .from('customers')
+          .insert({
+            customer_name: customer_name.trim(),
+            customer_phone: customer_phone.trim(),
+            created_date: new Date().toISOString().split('T')[0],
+            last_transaction_date: new Date().toISOString().split('T')[0]
+          })
+          .select()
+          .single()
+          
+        if (customerError) throw customerError
+        customer_id = newCustomer.id
+      }
+    } catch (error) {
+      console.error('Customer creation/lookup error:', error)
+      return res.status(500).json({ error: 'Failed to process customer information' })
+    }
+
+    // Handle voucher number - use provided number or generate one
+    let finalVoucherNumber = voucher_number
+    
+    if (!finalVoucherNumber) {
+      // Generate voucher number if not provided
+      const { data: generatedNumber, error: numberError } = await req.supabase
+        .rpc('generate_voucher_number', { store_prefix: 'PJ' })
+
+      if (numberError) throw numberError
+      finalVoucherNumber = generatedNumber
+    } else {
+      // Check if manually entered voucher number already exists
+      const { data: existingVoucher, error: checkError } = await req.supabase
+        .from('gift_vouchers')
+        .select('id')
+        .eq('voucher_number', finalVoucherNumber.trim())
+        .single()
+
+      if (!checkError && existingVoucher) {
+        return res.status(400).json({ error: 'Voucher number already exists' })
+      }
+    }
 
     const voucherData = {
-      voucher_number: voucherNumber,
+      voucher_number: finalVoucherNumber,
       original_amount: parseFloat(original_amount),
       current_balance: parseFloat(original_amount),
       issued_date: new Date().toISOString().split('T')[0],
       expiry_date: expiry_date,
-      store_id: req.user.store_id,
+      store_id: targetStoreId,
       created_by: req.user.id,
-      customer_name,
-      customer_phone,
+      customer_id,           // NEW: Link to customer record
+      customer_name,         // Keep for display/backup
+      customer_phone,        // Keep for display/backup
       notes
     }
 

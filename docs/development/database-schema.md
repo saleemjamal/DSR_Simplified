@@ -341,8 +341,156 @@ CREATE TABLE export_templates (
 );
 ```
 
-### 13. Gift Vouchers Table
-Manages gift voucher lifecycle with legacy voucher support.
+## Enhanced Sales Transaction System Tables
+
+### 13. Customers Table
+Manages customer information for all transaction types with phone-based deduplication.
+
+```sql
+CREATE TABLE customers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    customer_name VARCHAR(100) NOT NULL,
+    customer_phone VARCHAR(20) UNIQUE,
+    customer_email VARCHAR(100),
+    address TEXT,
+    credit_limit DECIMAL(10,2) DEFAULT 0,
+    total_outstanding DECIMAL(10,2) DEFAULT 0,
+    notes TEXT,
+    created_date DATE DEFAULT CURRENT_DATE,
+    last_transaction_date DATE,
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**Indexes:**
+- `idx_customers_phone` ON customer_phone (unique)
+- `idx_customers_name` ON customer_name
+- `idx_customers_email` ON customer_email
+- `idx_customers_created_date` ON created_date
+
+### 14. Deposits Table
+Tracks all advance payments separately from sales revenue.
+
+```sql
+CREATE TABLE deposits (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    store_id UUID NOT NULL REFERENCES stores(id),
+    deposit_date DATE NOT NULL,
+    deposit_type VARCHAR(20) NOT NULL CHECK (deposit_type IN ('sales_order', 'other')),
+    reference_id UUID,
+    reference_type VARCHAR(20),
+    amount DECIMAL(10,2) NOT NULL,
+    payment_method VARCHAR(20) NOT NULL CHECK (payment_method IN ('cash', 'credit_card', 'upi', 'bank_transfer')),
+    customer_id UUID REFERENCES customers(id),
+    processed_by UUID NOT NULL REFERENCES users(id),
+    notes TEXT,
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**Indexes:**
+- `idx_deposits_store_date` ON (store_id, deposit_date)
+- `idx_deposits_type` ON deposit_type
+- `idx_deposits_customer` ON customer_id
+- `idx_deposits_reference` ON (reference_id, reference_type)
+
+### 15. Sales Orders Table
+Tracks customer orders awaiting stock fulfillment with ERP integration.
+
+```sql
+CREATE TABLE sales_orders (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    store_id UUID NOT NULL REFERENCES stores(id),
+    order_number VARCHAR(50) UNIQUE NOT NULL,
+    customer_id UUID NOT NULL REFERENCES customers(id),
+    order_date DATE NOT NULL,
+    items_description TEXT NOT NULL,
+    total_estimated_amount DECIMAL(10,2) NOT NULL,
+    advance_paid DECIMAL(10,2) DEFAULT 0,
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'converted', 'cancelled')),
+    erp_conversion_date DATE,
+    erp_sale_bill_number VARCHAR(100),
+    converted_by UUID REFERENCES users(id),
+    notes TEXT,
+    created_by UUID NOT NULL REFERENCES users(id),
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**Indexes:**
+- `idx_sales_orders_store_date` ON (store_id, order_date)
+- `idx_sales_orders_customer` ON customer_id
+- `idx_sales_orders_status` ON status
+- `idx_sales_orders_number` ON order_number
+- `idx_sales_orders_erp_bill` ON erp_sale_bill_number
+
+### 16. Hand Bills Table
+Tracks hand bills with dual image storage and conversion tracking.
+
+```sql
+CREATE TABLE hand_bills (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    store_id UUID NOT NULL REFERENCES stores(id),
+    hand_bill_number VARCHAR(50) UNIQUE NOT NULL,
+    sale_date DATE NOT NULL,
+    customer_id UUID REFERENCES customers(id),
+    amount DECIMAL(10,2) NOT NULL,
+    items_description TEXT,
+    original_image_url VARCHAR(500),
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'converted', 'cancelled')),
+    conversion_date DATE,
+    erp_sale_bill_number VARCHAR(100),
+    sale_bill_image_url VARCHAR(500),
+    converted_by UUID REFERENCES users(id),
+    notes TEXT,
+    created_by UUID NOT NULL REFERENCES users(id),
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**Indexes:**
+- `idx_hand_bills_store_date` ON (store_id, sale_date)
+- `idx_hand_bills_customer` ON customer_id
+- `idx_hand_bills_status` ON status
+- `idx_hand_bills_number` ON hand_bill_number
+
+### 17. Returns (RRN) Table
+Documents return transactions for compliance and tracking.
+
+```sql
+CREATE TABLE returns (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    store_id UUID NOT NULL REFERENCES stores(id),
+    return_date DATE NOT NULL,
+    customer_id UUID REFERENCES customers(id),
+    return_amount DECIMAL(10,2) NOT NULL,
+    return_reason VARCHAR(200) NOT NULL,
+    original_bill_reference VARCHAR(100),
+    payment_method VARCHAR(20) CHECK (payment_method IN ('cash', 'credit_card', 'upi', 'store_credit')),
+    processed_by UUID NOT NULL REFERENCES users(id),
+    notes TEXT,
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**Indexes:**
+- `idx_returns_store_date` ON (store_id, return_date)
+- `idx_returns_customer` ON customer_id
+- `idx_returns_processed_by` ON processed_by
+- `idx_returns_bill_ref` ON original_bill_reference
+
+### 18. Gift Vouchers Table (Enhanced)
+Manages gift voucher lifecycle with customer linking and mandatory fields.
 
 ```sql
 CREATE TABLE gift_vouchers (
@@ -357,8 +505,9 @@ CREATE TABLE gift_vouchers (
     store_id UUID NOT NULL REFERENCES stores(id),
     created_by UUID REFERENCES users(id),
     redeemed_by UUID REFERENCES users(id),
-    customer_name VARCHAR(100),
-    customer_phone VARCHAR(20),
+    customer_id UUID REFERENCES customers(id),  -- NEW: Links to customer records
+    customer_name VARCHAR(100) NOT NULL,        -- NOW REQUIRED: Mandatory field
+    customer_phone VARCHAR(20) NOT NULL,        -- NOW REQUIRED: Mandatory field
     notes TEXT,
     metadata JSONB DEFAULT '{}',
     created_at TIMESTAMP DEFAULT NOW(),
@@ -371,6 +520,7 @@ CREATE TABLE gift_vouchers (
 - `idx_gift_vouchers_status` ON status
 - `idx_gift_vouchers_store_expiry` ON (store_id, expiry_date)
 - `idx_gift_vouchers_type` ON voucher_type
+- `idx_gift_vouchers_customer` ON customer_id  -- NEW: Customer linking index
 
 ### 14. Damage Reports Table
 Tracks damaged items and supplier actions with automated alerts.

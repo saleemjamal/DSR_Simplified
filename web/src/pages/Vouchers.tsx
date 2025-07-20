@@ -41,8 +41,8 @@ import {
   Info
 } from '@mui/icons-material'
 import { format, addDays } from 'date-fns'
-import { GiftVoucher, VoucherFormData } from '../types'
-import { vouchersApi } from '../services/api'
+import { GiftVoucher, VoucherFormData, Store } from '../types'
+import { vouchersApi, storesApi } from '../services/api'
 import { useAuth } from '../hooks/useAuth'
 
 interface TabPanelProps {
@@ -79,10 +79,15 @@ const Vouchers = () => {
   const [createForm, setCreateForm] = useState<VoucherFormData>({
     original_amount: 0,
     expiry_date: format(addDays(new Date(), 30), 'yyyy-MM-dd'), // Default 30 days
-    customer_name: '',
-    customer_phone: '',
-    notes: ''
+    customer_name: '',     // Required field
+    customer_phone: '',    // Required field
+    notes: '',
+    voucher_number: ''
   })
+  
+  // Store selection state
+  const [stores, setStores] = useState<Store[]>([])
+  const [selectedStoreId, setSelectedStoreId] = useState('')
   
   // Search voucher state
   const [searchNumber, setSearchNumber] = useState('')
@@ -99,10 +104,17 @@ const Vouchers = () => {
   // Check if user can create vouchers (everyone except accounts_incharge)
   const canCreateVouchers = user?.role !== 'accounts_incharge'
   const canCancelVouchers = user?.role === 'super_user' || user?.role === 'accounts_incharge'
+  const needsStoreSelection = user?.role === 'super_user' || user?.role === 'accounts_incharge'
 
   useEffect(() => {
     loadVouchers()
   }, [])
+
+  useEffect(() => {
+    if (needsStoreSelection && createModalOpen) {
+      loadStores()
+    }
+  }, [needsStoreSelection, createModalOpen])
 
   const loadVouchers = async () => {
     try {
@@ -118,6 +130,19 @@ const Vouchers = () => {
     }
   }
 
+  const loadStores = async () => {
+    try {
+      const storesData = await storesApi.getAll()
+      setStores(storesData)
+      if (storesData.length === 1) {
+        setSelectedStoreId(storesData[0].id)
+      }
+    } catch (err: any) {
+      console.error('Failed to load stores:', err)
+      setError('Failed to load stores')
+    }
+  }
+
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue)
   }
@@ -127,16 +152,50 @@ const Vouchers = () => {
       setCreateLoading(true)
       setError('')
       
-      await vouchersApi.create(createForm)
+      if (needsStoreSelection && !selectedStoreId) {
+        setError('Please select a store')
+        return
+      }
+
+      if (!createForm.original_amount || createForm.original_amount <= 0) {
+        setError('Please enter a valid amount')
+        return
+      }
+
+      if (!createForm.expiry_date) {
+        setError('Please enter an expiry date')
+        return
+      }
+
+      if (!createForm.customer_name || createForm.customer_name.trim() === '') {
+        setError('Customer name is required')
+        return
+      }
+
+      if (!createForm.customer_phone || createForm.customer_phone.trim() === '') {
+        setError('Customer phone is required')
+        return
+      }
+
+      const requestData: any = { ...createForm }
+      
+      // Add store_id for super users/accounts
+      if (needsStoreSelection && selectedStoreId) {
+        requestData.store_id = selectedStoreId
+      }
+      
+      await vouchersApi.create(requestData)
       setSuccess('Gift voucher created successfully!')
       setCreateModalOpen(false)
       setCreateForm({
         original_amount: 0,
         expiry_date: format(addDays(new Date(), 30), 'yyyy-MM-dd'),
-        customer_name: '',
-        customer_phone: '',
-        notes: ''
+        customer_name: '',     // Required field
+        customer_phone: '',    // Required field
+        notes: '',
+        voucher_number: ''
       })
+      setSelectedStoreId('')
       loadVouchers()
     } catch (error: any) {
       console.error('Error creating voucher:', error)
@@ -467,6 +526,24 @@ const Vouchers = () => {
         <DialogTitle>Create New Gift Voucher</DialogTitle>
         <DialogContent>
           <Box display="flex" flexDirection="column" gap={2} sx={{ mt: 1 }}>
+            {/* Store Selection for Super Users/Accounts */}
+            {needsStoreSelection && (
+              <FormControl required>
+                <InputLabel>Select Store</InputLabel>
+                <Select
+                  value={selectedStoreId}
+                  onChange={(e) => setSelectedStoreId(e.target.value)}
+                  label="Select Store"
+                >
+                  {stores.map((store) => (
+                    <MenuItem key={store.id} value={store.id}>
+                      {store.store_code} - {store.store_name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+            
             <TextField
               label="Amount"
               type="number"
@@ -476,6 +553,7 @@ const Vouchers = () => {
               InputProps={{
                 startAdornment: <InputAdornment position="start">₹</InputAdornment>
               }}
+              inputProps={{ min: 0, step: 0.01 }}
             />
             <TextField
               label="Expiry Date"
@@ -487,14 +565,25 @@ const Vouchers = () => {
               inputProps={{ min: format(new Date(), 'yyyy-MM-dd') }}
             />
             <TextField
-              label="Customer Name"
-              value={createForm.customer_name}
-              onChange={(e) => setCreateForm({ ...createForm, customer_name: e.target.value })}
+              label="Voucher Number (Optional)"
+              value={createForm.voucher_number}
+              onChange={(e) => setCreateForm({ ...createForm, voucher_number: e.target.value })}
+              placeholder="Leave empty to auto-generate"
+              helperText="If empty, system will auto-generate voucher number"
             />
             <TextField
-              label="Customer Phone"
+              label="Customer Name *"
+              value={createForm.customer_name}
+              onChange={(e) => setCreateForm({ ...createForm, customer_name: e.target.value })}
+              placeholder="Enter customer name"
+              required
+            />
+            <TextField
+              label="Customer Phone *"
               value={createForm.customer_phone}
               onChange={(e) => setCreateForm({ ...createForm, customer_phone: e.target.value })}
+              placeholder="+91 9876543210"
+              required
             />
             <TextField
               label="Notes"
@@ -502,15 +591,26 @@ const Vouchers = () => {
               rows={3}
               value={createForm.notes}
               onChange={(e) => setCreateForm({ ...createForm, notes: e.target.value })}
+              placeholder="Additional notes for the voucher"
             />
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setCreateModalOpen(false)}>Cancel</Button>
+          <Button onClick={() => {
+            setCreateModalOpen(false)
+            setSelectedStoreId('')
+          }}>Cancel</Button>
           <Button
             onClick={handleCreateVoucher}
             variant="contained"
-            disabled={createLoading || !createForm.original_amount || !createForm.expiry_date}
+            disabled={
+              createLoading || 
+              !createForm.original_amount || 
+              !createForm.expiry_date || 
+              !createForm.customer_name ||
+              !createForm.customer_phone ||
+              (needsStoreSelection && !selectedStoreId)
+            }
           >
             {createLoading ? 'Creating...' : 'Create Voucher'}
           </Button>

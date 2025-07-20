@@ -11,7 +11,17 @@ import {
   SalesFormData,
   ExpenseFormData,
   VoucherFormData,
-  ApiResponse
+  ApiResponse,
+  Customer,
+  CustomerFormData,
+  SalesOrder,
+  SalesOrderFormData,
+  Deposit,
+  DepositFormData,
+  HandBill,
+  HandBillFormData,
+  Return,
+  ReturnFormData
 } from '../types'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3004/api/v1'
@@ -380,6 +390,268 @@ export const adminApi = {
     limit?: number
   }): Promise<any[]> => {
     const response = await api.get('/admin/audit-logs', { params })
+    return response.data
+  }
+}
+
+// Customers API
+export const customersApi = {
+  getAll: async (params?: {
+    search?: string
+    page?: number
+    limit?: number
+  }): Promise<Customer[]> => {
+    const response = await api.get<Customer[]>('/customers', { params })
+    return response.data
+  },
+
+  getById: async (customerId: string): Promise<Customer> => {
+    const response = await api.get<Customer>(`/customers/${customerId}`)
+    return response.data
+  },
+
+  create: async (customerData: CustomerFormData): Promise<ApiResponse<Customer>> => {
+    const response = await api.post<ApiResponse<Customer>>('/customers', customerData)
+    return response.data
+  },
+
+  update: async (customerId: string, customerData: Partial<CustomerFormData>): Promise<ApiResponse<Customer>> => {
+    const response = await api.patch<ApiResponse<Customer>>(`/customers/${customerId}`, customerData)
+    return response.data
+  },
+
+  searchByPhone: async (phone: string): Promise<Customer> => {
+    const response = await api.get<Customer>(`/customers/search/phone/${phone}`)
+    return response.data
+  },
+
+  getTransactions: async (customerId: string, limit?: number): Promise<{
+    sales: any[]
+    orders: any[]
+    deposits: any[]
+  }> => {
+    const response = await api.get(`/customers/${customerId}/transactions`, { 
+      params: { limit } 
+    })
+    return response.data
+  }
+}
+
+// Sales Orders API
+export const salesOrdersApi = {
+  getAll: async (params?: {
+    status?: string
+    customer_id?: string
+    start_date?: string
+    end_date?: string
+    page?: number
+    limit?: number
+    store_id?: string
+  }): Promise<SalesOrder[]> => {
+    const response = await api.get<SalesOrder[]>('/sales-orders', { params })
+    return response.data
+  },
+
+  getById: async (orderId: string): Promise<SalesOrder> => {
+    const response = await api.get<SalesOrder>(`/sales-orders/${orderId}`)
+    return response.data
+  },
+
+  create: async (orderData: SalesOrderFormData & { store_id?: string }): Promise<ApiResponse<SalesOrder>> => {
+    const response = await api.post<ApiResponse<SalesOrder>>('/sales-orders', orderData)
+    return response.data
+  },
+
+  update: async (orderId: string, orderData: Partial<SalesOrderFormData>): Promise<ApiResponse<SalesOrder>> => {
+    const response = await api.patch<ApiResponse<SalesOrder>>(`/sales-orders/${orderId}`, orderData)
+    return response.data
+  },
+
+  convert: async (orderId: string, data: {
+    erp_sale_bill_number: string
+    notes?: string
+  }): Promise<ApiResponse<SalesOrder>> => {
+    const response = await api.patch<ApiResponse<SalesOrder>>(`/sales-orders/${orderId}/convert`, data)
+    return response.data
+  },
+
+  cancel: async (orderId: string, reason?: string): Promise<ApiResponse<SalesOrder>> => {
+    const response = await api.patch<ApiResponse<SalesOrder>>(`/sales-orders/${orderId}/cancel`, { reason })
+    return response.data
+  },
+
+  getSummary: async (params?: {
+    start_date?: string
+    end_date?: string
+    store_id?: string
+  }): Promise<any> => {
+    const response = await api.get('/sales-orders/stats/summary', { params })
+    return response.data
+  }
+}
+
+// Deposits API
+export const depositsApi = {
+  getAll: async (params?: {
+    deposit_type?: string
+    customer_id?: string
+    start_date?: string
+    end_date?: string
+    payment_method?: string
+    page?: number
+    limit?: number
+    store_id?: string
+  }): Promise<Deposit[]> => {
+    const response = await api.get<Deposit[]>('/deposits', { params })
+    return response.data
+  },
+
+  getById: async (depositId: string): Promise<Deposit> => {
+    const response = await api.get<Deposit>(`/deposits/${depositId}`)
+    return response.data
+  },
+
+  create: async (depositData: DepositFormData & { store_id?: string }): Promise<ApiResponse<Deposit>> => {
+    const response = await api.post<ApiResponse<Deposit>>('/deposits', depositData)
+    return response.data
+  },
+
+  update: async (depositId: string, depositData: Partial<DepositFormData>): Promise<ApiResponse<Deposit>> => {
+    const response = await api.patch<ApiResponse<Deposit>>(`/deposits/${depositId}`, depositData)
+    return response.data
+  },
+
+  delete: async (depositId: string): Promise<{ message: string }> => {
+    const response = await api.delete(`/deposits/${depositId}`)
+    return response.data
+  },
+
+  getSummary: async (params?: {
+    start_date?: string
+    end_date?: string
+    store_id?: string
+  }): Promise<any> => {
+    const response = await api.get('/deposits/stats/summary', { params })
+    return response.data
+  }
+}
+
+// Hand Bills API
+export const handBillsApi = {
+  getAll: async (params?: {
+    status?: string
+    customer_id?: string
+    start_date?: string
+    end_date?: string
+    page?: number
+    limit?: number
+    store_id?: string
+  }): Promise<HandBill[]> => {
+    const response = await api.get<HandBill[]>('/hand-bills', { params })
+    return response.data
+  },
+
+  getById: async (handBillId: string): Promise<HandBill> => {
+    const response = await api.get<HandBill>(`/hand-bills/${handBillId}`)
+    return response.data
+  },
+
+  create: async (handBillData: HandBillFormData & { store_id?: string; customer_id?: string }): Promise<ApiResponse<HandBill>> => {
+    const response = await api.post<ApiResponse<HandBill>>('/hand-bills', handBillData)
+    return response.data
+  },
+
+  update: async (handBillId: string, handBillData: Partial<HandBillFormData>): Promise<ApiResponse<HandBill>> => {
+    const response = await api.patch<ApiResponse<HandBill>>(`/hand-bills/${handBillId}`, handBillData)
+    return response.data
+  },
+
+  convert: async (handBillId: string, data: {
+    erp_sale_bill_number: string
+    sale_bill_image_url?: string
+    notes?: string
+  }): Promise<ApiResponse<HandBill>> => {
+    const response = await api.patch<ApiResponse<HandBill>>(`/hand-bills/${handBillId}/convert`, data)
+    return response.data
+  },
+
+  cancel: async (handBillId: string, reason?: string): Promise<ApiResponse<HandBill>> => {
+    const response = await api.patch<ApiResponse<HandBill>>(`/hand-bills/${handBillId}/cancel`, { reason })
+    return response.data
+  },
+
+  uploadImage: async (handBillId: string, data: {
+    image_url: string
+    image_type: 'original' | 'sale_bill'
+  }): Promise<ApiResponse<HandBill>> => {
+    const response = await api.post<ApiResponse<HandBill>>(`/hand-bills/${handBillId}/upload-image`, data)
+    return response.data
+  },
+
+  getSummary: async (params?: {
+    start_date?: string
+    end_date?: string
+    store_id?: string
+  }): Promise<any> => {
+    const response = await api.get('/hand-bills/stats/summary', { params })
+    return response.data
+  }
+}
+
+// Returns API
+export const returnsApi = {
+  getAll: async (params?: {
+    customer_id?: string
+    start_date?: string
+    end_date?: string
+    payment_method?: string
+    page?: number
+    limit?: number
+    store_id?: string
+  }): Promise<Return[]> => {
+    const response = await api.get<Return[]>('/returns', { params })
+    return response.data
+  },
+
+  getById: async (returnId: string): Promise<Return> => {
+    const response = await api.get<Return>(`/returns/${returnId}`)
+    return response.data
+  },
+
+  create: async (returnData: ReturnFormData & { store_id?: string; customer_id?: string }): Promise<ApiResponse<Return>> => {
+    const response = await api.post<ApiResponse<Return>>('/returns', returnData)
+    return response.data
+  },
+
+  update: async (returnId: string, returnData: Partial<ReturnFormData>): Promise<ApiResponse<Return>> => {
+    const response = await api.patch<ApiResponse<Return>>(`/returns/${returnId}`, returnData)
+    return response.data
+  },
+
+  delete: async (returnId: string): Promise<{ message: string }> => {
+    const response = await api.delete(`/returns/${returnId}`)
+    return response.data
+  },
+
+  searchByBill: async (billRef: string): Promise<Return[]> => {
+    const response = await api.get<Return[]>(`/returns/search/bill/${billRef}`)
+    return response.data
+  },
+
+  getSummary: async (params?: {
+    start_date?: string
+    end_date?: string
+    store_id?: string
+  }): Promise<any> => {
+    const response = await api.get('/returns/stats/summary', { params })
+    return response.data
+  },
+
+  getDailyReport: async (params?: {
+    date?: string
+    store_id?: string
+  }): Promise<any> => {
+    const response = await api.get('/returns/daily-report', { params })
     return response.data
   }
 }
