@@ -36,7 +36,7 @@
     "dev": "vite",
     "build": "vite build",
     "build:production": "vite build --mode production",
-    "vercel-build": "vite build --mode production",
+    "vercel-build": "npx vite build --mode production",
     "preview": "vite preview",
     "type-check": "tsc --noEmit",
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
