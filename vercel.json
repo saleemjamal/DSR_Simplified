@@ -24,7 +24,7 @@
       "destination": "/backend/src/index.js"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!api).*)",
       "destination": "/index.html"
     }
   ],
