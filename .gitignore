@@ -93,3 +93,4 @@ uploads/
 *.pem
 *.key
 *.crt
+transfer.env
