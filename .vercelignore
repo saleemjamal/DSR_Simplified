@@ -1,0 +1,89 @@
+# Vercel deployment ignore file
+# Exclude files and directories from deployment to optimize build time and size
+
+# Development files
+*.md
+*.MD
+README*
+CHANGELOG*
+LICENSE*
+.gitignore
+.github/
+.vscode/
+.idea/
+
+# Environment files (use Vercel dashboard instead)
+.env
+.env.local
+.env.development
+.env.test
+*.env
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Node modules (will be installed during build)
+node_modules/
+npm-cache/
+.npm/
+
+# Testing
+coverage/
+.nyc_output/
+test-results/
+**/__tests__/
+**/*.test.js
+**/*.test.ts
+**/*.spec.js
+**/*.spec.ts
+vitest.config.*
+jest.config.*
+
+# Build artifacts
+dist/
+build/
+.next/
+.cache/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+
+# Development scripts
+deploy.sh
+deploy.bat
+
+# Documentation
+docs/
+TESTING_GUIDE.md
+TEST_FIXES_SUMMARY.md
+
+# Backend specific (if deploying only frontend)
+backend/.env*
+backend/uploads/
+backend/logs/
+
+# Web specific temp files
+web/.env.local
+web/dist/
+web/build/
