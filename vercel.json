@@ -1,7 +1,7 @@
 {
   "version": 2,
   "buildCommand": "npm run build",
-  "outputDirectory": "web/dist",
+  "outputDirectory": "dist",
   "installCommand": "npm install",
   "functions": {
     "backend/src/index.js": {
