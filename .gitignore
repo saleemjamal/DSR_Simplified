@@ -95,3 +95,4 @@ uploads/
 *.crt
 transfer.env
 docs/deployment/vercel-troubleshooting.md
+docs/deployment/working-vercel-config.md
