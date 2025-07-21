@@ -44,11 +44,12 @@ test-results/
 vitest.config.*
 jest.config.*
 
-# Build artifacts
-dist/
+# Build artifacts (keep web/dist for deployment)
+backend/dist/
 build/
 .next/
 .cache/
+web/dist/*.map
 
 # OS generated files
 .DS_Store
