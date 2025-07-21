@@ -1,13 +1,24 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
+  "buildCommand": "npm run vercel-build",
+  "outputDirectory": "web/dist",
   "installCommand": "npm install",
-  "functions": {
-    "backend/src/index.js": {
-      "maxDuration": 30
+  "builds": [
+    {
+      "src": "web/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    },
+    {
+      "src": "backend/src/index.js",
+      "use": "@vercel/node",
+      "config": {
+        "maxDuration": 30
+      }
     }
-  },
+  ],
   "rewrites": [
     {
       "source": "/api/(.*)",
