@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "buildCommand": "cd web && npm run build",
   "builds": [
     {
       "src": "web/package.json",
