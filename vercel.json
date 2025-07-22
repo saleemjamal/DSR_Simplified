@@ -19,16 +19,8 @@
       "destination": "/backend/src/index.js"
     },
     {
-      "source": "/auth/(.*)",
-      "destination": "/backend/src/index.js"
-    },
-    {
-      "source": "/callback",
-      "destination": "/backend/src/index.js"
-    },
-    {
       "source": "/(.*)",
-      "destination": "/web/dist/index.html"
+      "destination": "/index.html"
     }
   ]
 }
