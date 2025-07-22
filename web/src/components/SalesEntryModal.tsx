@@ -27,6 +27,7 @@ import {
   Grid,
   Divider
 } from '@mui/material'
+import { handBillsApi, salesOrdersApi, salesApi, returnsApi } from '../services/api'
 import { 
   CardGiftcard, 
   Receipt, 
@@ -302,19 +303,7 @@ const SalesEntryModal = ({ open, onClose, onSuccess }: SalesEntryModalProps) => 
         requestData.store_id = selectedStoreId
       }
 
-      const response = await fetch('/api/v1/hand-bills', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        },
-        body: JSON.stringify(requestData)
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to create hand bill')
-      }
+      const response = await handBillsApi.create(requestData)
       
       onSuccess()
       handleClose()
@@ -364,19 +353,7 @@ const SalesEntryModal = ({ open, onClose, onSuccess }: SalesEntryModalProps) => 
         requestData.store_id = selectedStoreId
       }
 
-      const response = await fetch('/api/v1/sales-orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        },
-        body: JSON.stringify(requestData)
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to create sales order')
-      }
+      const response = await salesOrdersApi.create(requestData)
       
       onSuccess()
       handleClose()
@@ -416,19 +393,7 @@ const SalesEntryModal = ({ open, onClose, onSuccess }: SalesEntryModalProps) => 
         requestData.store_id = selectedStoreId
       }
 
-      const response = await fetch('/api/v1/returns', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        },
-        body: JSON.stringify(requestData)
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to create return')
-      }
+      const response = await returnsApi.create(requestData)
       
       onSuccess()
       handleClose()

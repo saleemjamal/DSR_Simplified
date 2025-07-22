@@ -13,6 +13,7 @@ import {
   Alert
 } from '@mui/material'
 import { Add, PersonAdd } from '@mui/icons-material'
+import { customersApi } from '../services/api'
 
 interface Customer {
   id: string
@@ -77,21 +78,7 @@ const CustomerSelector = ({
   const loadCustomers = async (search = '') => {
     try {
       setLoading(true)
-      const params = new URLSearchParams()
-      if (search) params.append('search', search)
-      params.append('limit', '20')
-
-      const response = await fetch(`/api/v1/customers?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to load customers')
-      }
-
-      const data = await response.json()
+      const data = await customersApi.getAll({ search, limit: 20 })
       setCustomers(data)
     } catch (error) {
       console.error('Error loading customers:', error)
@@ -111,21 +98,7 @@ const CustomerSelector = ({
         return
       }
 
-      const response = await fetch('/api/v1/customers', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        },
-        body: JSON.stringify(quickAddForm)
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to create customer')
-      }
-
-      const result = await response.json()
+      const result = await customersApi.create(quickAddForm)
       const newCustomer = result.data
 
       // Add to customers list and select it
