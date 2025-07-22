@@ -3,7 +3,9 @@ const cors = require('cors')
 const helmet = require('helmet')
 const morgan = require('morgan')
 const rateLimit = require('express-rate-limit')
-require('dotenv').config()
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config()
+}
 
 const app = express()
 const PORT = process.env.PORT || 3004
