@@ -186,6 +186,11 @@ export const storesApi = {
   updateConfig: async (storeId: string, configuration: Record<string, any>): Promise<ApiResponse<Store>> => {
     const response = await api.patch<ApiResponse<Store>>(`/stores/${storeId}/config`, { configuration })
     return response.data
+  },
+
+  getDropdown: async (): Promise<{ id: string; store_code: string; store_name: string }[]> => {
+    const response = await api.get('/stores/dropdown')
+    return response.data
   }
 }
 
@@ -342,6 +347,22 @@ export const damageApi = {
     [key: string]: any
   }): Promise<ApiResponse<DamageReport>> => {
     const response = await api.post<ApiResponse<DamageReport>>('/damage', damageData)
+    return response.data
+  }
+}
+
+// Dashboard API (consolidated endpoint for better performance)
+export const dashboardApi = {
+  getData: async (date?: string): Promise<{
+    salesSummary: { tender_type: string; total_amount: number; count: number }[]
+    dashboardStats: {
+      todayTotal: number
+      pendingApprovals: number
+      cashVariance: number
+      overdueCredits: number
+    }
+  }> => {
+    const response = await api.get('/dashboard', { params: { date } })
     return response.data
   }
 }

@@ -56,6 +56,7 @@ app.use('/api/v1/hand-bills', require('./routes/hand_bills'))
 app.use('/api/v1/returns', require('./routes/returns'))
 app.use('/api/v1/damage', require('./routes/damage'))
 app.use('/api/v1/reports', require('./routes/reports'))
+app.use('/api/v1/dashboard', require('./routes/dashboard'))
 app.use('/api/v1/admin', require('./routes/admin'))
 
 // Error handling middleware
