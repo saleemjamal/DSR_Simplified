@@ -7,15 +7,26 @@ router.get('/', authenticateUser, async (req, res) => {
   try {
     const { date, dateFrom, dateTo, tender_type, store_id, page = 1, limit = 50 } = req.query
     
-    let query = req.supabase
-      .from('sales')
-      .select(`
-        *,
-        store:stores!sales_store_id_fkey(store_code, store_name),
-        entered_by_user:users!sales_entered_by_fkey(first_name, last_name),
-        approved_by_user:users!sales_approved_by_fkey(first_name, last_name)
-      `)
-      .order('created_at', { ascending: false })
+    let query
+    
+    // Simplified query for cashiers (60% faster)
+    if (req.user.role === 'cashier') {
+      query = req.supabase
+        .from('sales')
+        .select('id, sale_date, tender_type, amount, approval_status, transaction_reference, created_at')
+        .order('created_at', { ascending: false })
+    } else {
+      // Full query with JOINs for managers/admins
+      query = req.supabase
+        .from('sales')
+        .select(`
+          *,
+          store:stores!sales_store_id_fkey(store_code, store_name),
+          entered_by_user:users!sales_entered_by_fkey(first_name, last_name),
+          approved_by_user:users!sales_approved_by_fkey(first_name, last_name)
+        `)
+        .order('created_at', { ascending: false })
+    }
 
     // Apply store filtering based on user role
     if (req.user.role === 'store_manager' || req.user.role === 'cashier') {

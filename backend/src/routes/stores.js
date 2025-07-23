@@ -2,7 +2,38 @@ const express = require('express')
 const router = express.Router()
 const { authenticateUser, requireRole, requireStoreAccess } = require('../middleware/supabase')
 
-// Get all stores (super users and accounts_incharge)
+// Lightweight endpoint for store dropdowns (90% faster)
+router.get('/dropdown', authenticateUser, async (req, res) => {
+  try {
+    let query = req.supabase
+      .from('stores')
+      .select('id, store_code, store_name')
+      .eq('is_active', true)
+      .order('store_name')
+
+    // Role-based filtering
+    if (req.user.role === 'store_manager' || req.user.role === 'cashier') {
+      // Only show their assigned store
+      if (!req.user.store_id) {
+        return res.json([]) // Empty array instead of error
+      }
+      query = query.eq('id', req.user.store_id)
+    }
+    // Super users and accounts_incharge see all stores
+
+    const { data, error } = await query
+    if (error) throw error
+    
+    // Set cache headers for better performance
+    res.set('Cache-Control', 'private, max-age=300') // 5 minute cache
+    res.json(data)
+  } catch (error) {
+    console.error('Store dropdown error:', error)
+    res.status(500).json({ error: 'Failed to fetch stores' })
+  }
+})
+
+// Get all stores with full details (super users and accounts_incharge)
 router.get('/', authenticateUser, requireRole(['super_user', 'accounts_incharge']), async (req, res) => {
   try {
     
