@@ -75,7 +75,8 @@ router.post('/', authenticateUser, async (req, res) => {
       customer_email,
       address,
       credit_limit = 0,
-      notes
+      notes,
+      origin_store_id
     } = req.body
 
     // Validation
@@ -110,6 +111,44 @@ router.post('/', authenticateUser, async (req, res) => {
       }
     }
 
+    // Determine origin_store_id
+    let effectiveOriginStoreId = origin_store_id
+
+    // If not provided, default to user's assigned store
+    if (!effectiveOriginStoreId) {
+      effectiveOriginStoreId = req.user.store_id
+    }
+
+    // Validation: Super users and accounts_incharge must specify origin store if they don't have one assigned
+    if (!effectiveOriginStoreId && (req.user.role === 'super_user' || req.user.role === 'accounts_incharge')) {
+      return res.status(400).json({ 
+        error: 'Please specify origin_store_id for customer creation' 
+      })
+    }
+
+    // Validate that the origin store exists and user has access to it
+    if (effectiveOriginStoreId) {
+      const { data: store, error: storeError } = await req.supabase
+        .from('stores')
+        .select('id')
+        .eq('id', effectiveOriginStoreId)
+        .single()
+
+      if (storeError || !store) {
+        return res.status(400).json({ 
+          error: 'Invalid origin store specified' 
+        })
+      }
+
+      // For store managers and cashiers, ensure they can only create customers for their assigned store
+      if ((req.user.role === 'store_manager' || req.user.role === 'cashier') && 
+          effectiveOriginStoreId !== req.user.store_id) {
+        return res.status(403).json({ 
+          error: 'Cannot create customer for a different store' 
+        })
+      }
+    }
+
     const customerData = {
       customer_name: customer_name.trim(),
       customer_phone: customer_phone?.trim() || null,
@@ -117,6 +156,7 @@ router.post('/', authenticateUser, async (req, res) => {
       address: address?.trim() || null,
       credit_limit: parseFloat(credit_limit) || 0,
       notes: notes?.trim() || null,
+      origin_store_id: effectiveOriginStoreId,
       created_date: new Date().toISOString().split('T')[0],
       last_transaction_date: null,
       total_outstanding: 0

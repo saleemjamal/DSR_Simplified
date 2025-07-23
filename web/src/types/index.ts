@@ -221,6 +221,7 @@ export interface Customer {
   credit_limit: number
   total_outstanding: number
   notes?: string
+  origin_store_id?: string
   created_date: string
   last_transaction_date?: string
   created_at: string
@@ -375,4 +376,5 @@ export interface CustomerFormData {
   address?: string
   credit_limit?: number
   notes?: string
+  origin_store_id?: string
 }

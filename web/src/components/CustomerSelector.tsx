@@ -14,6 +14,7 @@ import {
 } from '@mui/material'
 import { Add, PersonAdd } from '@mui/icons-material'
 import { customersApi } from '../services/api'
+import { useAuth } from '../hooks/useAuth'
 
 interface Customer {
   id: string
@@ -32,6 +33,7 @@ interface CustomerSelectorProps {
   disabled?: boolean
   size?: 'small' | 'medium'
   allowQuickAdd?: boolean
+  store_id?: string // For super users to specify which store the customer belongs to
 }
 
 interface QuickAddFormData {
@@ -49,8 +51,10 @@ const CustomerSelector = ({
   required = false,
   disabled = false,
   size = 'medium',
-  allowQuickAdd = true
+  allowQuickAdd = true,
+  store_id
 }: CustomerSelectorProps) => {
+  const { user } = useAuth()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -98,7 +102,22 @@ const CustomerSelector = ({
         return
       }
 
-      const result = await customersApi.create(quickAddForm)
+      // Determine origin_store_id for the customer
+      const getOriginStoreId = () => {
+        // If store_id prop is provided (for super users), use it
+        if (store_id) {
+          return store_id
+        }
+        // Otherwise, use the current user's assigned store
+        return user?.store_id
+      }
+
+      const customerData = {
+        ...quickAddForm,
+        origin_store_id: getOriginStoreId()
+      }
+
+      const result = await customersApi.create(customerData)
       const newCustomer = result.data
 
       // Add to customers list and select it
