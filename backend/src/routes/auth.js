@@ -119,36 +119,14 @@ router.post('/login/google', async (req, res) => {
       throw userError
     }
 
-    let finalUser = systemUser
-
-    // If user doesn't exist, create them automatically
+    // User must be pre-created by super user
     if (!systemUser) {
-      const role = determineRoleFromEmail(user.email)
-      
-      const { data: newUser, error: createError } = await supabaseAdmin
-        .from('users')
-        .insert({
-          username: user.email.split('@')[0], // Use email prefix as username
-          email: user.email,
-          first_name: user.user_metadata?.full_name?.split(' ')[0] || user.email.split('@')[0],
-          last_name: user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',
-          role: role,
-          authentication_type: 'google_sso',
-          is_active: true,
-          store_id: null, // Will be assigned by admin
-          google_workspace_id: user.id,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single()
-
-      if (createError) {
-        throw createError
-      }
-      
-      finalUser = newUser
+      return res.status(403).json({ 
+        error: 'User not found. Please contact administrator for access.' 
+      })
     }
+
+    let finalUser = systemUser
 
     // Update last login and Google workspace ID  
     await supabaseAdmin
@@ -658,16 +636,17 @@ router.post('/logout', authenticateUser, async (req, res) => {
 })
 
 // Helper function to determine role from email patterns
-const determineRoleFromEmail = (email) => {
-  // Define role mapping based on email patterns
-  if (email.includes('admin') || email.includes('super') || email === 'saleem@poppatjamals.com') {
-    return 'super_user'
-  } else if (email.includes('accounts') || email.includes('finance')) {
-    return 'accounts_incharge'
-  } else {
-    return 'store_manager' // Default for @poppatjamals.com users
-  }
-}
+// No longer needed - users must be pre-created with explicit roles
+// const determineRoleFromEmail = (email) => {
+//   // Define role mapping based on email patterns
+//   if (email.includes('admin') || email.includes('super') || email === 'saleem@poppatjamals.com') {
+//     return 'super_user'
+//   } else if (email.includes('accounts') || email.includes('finance')) {
+//     return 'accounts_incharge'
+//   } else {
+//     return 'store_manager' // Default for @poppatjamals.com users
+//   }
+// }
 
 // Update user details
 router.patch('/users/:userId', authenticateUser, requireRole(['super_user', 'store_manager', 'accounts_incharge']), async (req, res) => {
