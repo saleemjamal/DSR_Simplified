@@ -8,6 +8,14 @@ node_modules/
 .env.development.local
 .env.test.local
 .env.production.local
+.env.production
+.env.development
+.env.test
+backend/.env*
+web/.env*
+!backend/.env.example
+!web/.env.example
+!.env.example
 
 # Build outputs
 dist/
