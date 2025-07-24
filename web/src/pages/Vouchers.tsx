@@ -42,8 +42,9 @@ import {
 } from '@mui/icons-material'
 import { format, addDays } from 'date-fns'
 import { GiftVoucher, VoucherFormData, Store } from '../types'
-import { vouchersApi, storesApi } from '../services/api'
+import { vouchersApi } from '../services/api'
 import { useAuth } from '../hooks/useAuth'
+import { useStores } from '../hooks/useStores'
 import VoucherForm from '../components/forms/VoucherForm'
 
 interface TabPanelProps {
@@ -87,8 +88,15 @@ const Vouchers = () => {
   })
   
   // Store selection state
-  const [stores, setStores] = useState<Store[]>([])
+  const { stores, loading: storesLoading } = useStores()
   const [selectedStoreId, setSelectedStoreId] = useState('')
+
+  // Auto-select store if only one available
+  useEffect(() => {
+    if (needsStoreSelection && stores.length === 1 && !selectedStoreId) {
+      setSelectedStoreId(stores[0].id)
+    }
+  }, [stores, needsStoreSelection, selectedStoreId])
   
   // Search voucher state
   const [searchNumber, setSearchNumber] = useState('')
@@ -111,12 +119,6 @@ const Vouchers = () => {
     loadVouchers()
   }, [])
 
-  useEffect(() => {
-    if (needsStoreSelection && createModalOpen) {
-      loadStores()
-    }
-  }, [needsStoreSelection, createModalOpen])
-
   const loadVouchers = async () => {
     try {
       setLoading(true)
@@ -128,19 +130,6 @@ const Vouchers = () => {
       setError('Failed to load vouchers')
     } finally {
       setLoading(false)
-    }
-  }
-
-  const loadStores = async () => {
-    try {
-      const storesData = await storesApi.getAll()
-      setStores(storesData)
-      if (storesData.length === 1) {
-        setSelectedStoreId(storesData[0].id)
-      }
-    } catch (err: any) {
-      console.error('Failed to load stores:', err)
-      setError('Failed to load stores')
     }
   }
 
@@ -574,6 +563,9 @@ const Vouchers = () => {
               error={error}
               storeId={needsStoreSelection ? selectedStoreId : undefined}
               showStoreSelector={needsStoreSelection}
+              currentStoreName={!needsStoreSelection ? user?.stores?.store_name : undefined}
+              stores={stores}
+              onStoreChange={setSelectedStoreId}
             />
           </Box>
         </DialogContent>

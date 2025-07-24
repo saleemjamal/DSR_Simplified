@@ -755,6 +755,9 @@ const HandBills = () => {
               error={error}
               storeId={needsStoreSelection ? selectedCreateStoreId : undefined}
               showStoreSelector={needsStoreSelection}
+              currentStoreName={!needsStoreSelection ? user?.stores?.store_name : undefined}
+              stores={stores}
+              onStoreChange={setSelectedCreateStoreId}
             />
           </Box>
         </DialogContent>
