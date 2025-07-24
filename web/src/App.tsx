@@ -9,6 +9,7 @@ import Expenses from './pages/Expenses'
 import Vouchers from './pages/Vouchers'
 import SalesOrders from './pages/SalesOrders'
 import HandBills from './pages/HandBills'
+import Returns from './pages/Returns'
 import Damage from './pages/Damage'
 import Reports from './pages/Reports'
 import Approvals from './pages/Approvals'
@@ -40,6 +41,7 @@ function App() {
               <HandBills />
             </ProtectedRoute>
           } />
+          <Route path="returns" element={<Returns />} />
           <Route path="damage" element={<Damage />} />
           <Route path="reports" element={<Reports />} />
           <Route path="approvals" element={

@@ -27,6 +27,7 @@ import {
   Receipt,
   CardGiftcard,
   ShoppingCart,
+  Undo,
   ReportProblem,
   Assessment,
   Settings,
@@ -79,7 +80,8 @@ const navItems: NavItem[] = [
         icon: <Article />, 
         path: '/hand-bills',
         roles: ['store_manager', 'super_user', 'accounts_incharge']
-      }
+      },
+      { text: 'Returns', icon: <Undo />, path: '/returns' }
     ]
   },
   { 

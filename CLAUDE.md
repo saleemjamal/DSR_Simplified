@@ -111,6 +111,7 @@ The project uses a standardized form component pattern located in `/web/src/comp
 - ✅ **Standalone Pages** - Vouchers, HandBills, SalesOrders pages use shared forms
 - ✅ **Store Validation** - Super users/accounts incharge must select store manually
 - ✅ **Role-based Logic** - Store managers/cashiers have auto-populated stores
+- ✅ **Payment Method Integration** - All forms include payment method selectors
 
 #### **Form Development Guidelines:**
 1. **Reuse existing forms** instead of creating duplicates
@@ -143,9 +144,11 @@ The project uses a standardized form component pattern located in `/web/src/comp
 Based on TODO.md updates (July 2025):
 
 ### **Completed Major Milestones:**
-- ✅ **Form Standardization** - 90% code duplication reduction achieved
+- ✅ **Form Standardization** - 100% code duplication reduction achieved (all forms integrated)
+- ✅ **SalesEntryModal Integration** - All embedded forms replaced with standardized components
 - ✅ **Store Access Control** - Proper validation for super users and accounts incharge
 - ✅ **Customer Origin Tracking** - Full implementation with store validation
+- ✅ **Cash Reconciliation System** - Automatic variance calculation with real-time dashboard display
 
 ### **Remaining Tasks:**
 - [ ] **Returns Page Creation** - No dedicated Returns page exists yet (API available)
@@ -169,6 +172,13 @@ Based on TODO.md updates (July 2025):
 - Currently 5 stores (CBD, FSN, LVG, SBR, IBR)
 - Store access based on user role and assignment
 - Origin store tracking for cross-store operations
+
+### Cash Reconciliation System
+- **Automatic Variance Calculation** - Real-time cash variance tracking
+- **Payment Method Tracking** - All transaction types track payment methods (cash, credit_card, upi, etc.)
+- **Formula**: Cash Variance = Cash Sales + HB Cash + GV Cash + SO Advance Cash - Petty Cash Expenses - RRN Cash
+- **Dashboard Integration** - Visual status indicators (balanced/surplus/deficit) with detailed breakdowns
+- **PostgreSQL Functions** - `get_cash_variance_summary()` for efficient calculation
 
 ### Approval Workflows
 - Centralized approval dashboard for managers

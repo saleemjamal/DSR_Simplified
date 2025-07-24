@@ -7,7 +7,11 @@ import {
   Typography,
   InputAdornment,
   Alert,
-  CircularProgress
+  CircularProgress,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material'
 import { SalesOrderFormData, Customer } from '../../types'
 import { useAuth } from '../../hooks/useAuth'
@@ -23,6 +27,9 @@ interface SalesOrderFormProps {
   mode?: 'create' | 'edit'
   showStoreSelector?: boolean
   showAdvancePayment?: boolean
+  currentStoreName?: string // For store managers (read-only display)
+  stores?: Array<{ id: string; store_name: string }> // Store options for dropdown
+  onStoreChange?: (storeId: string) => void // Store selection callback
 }
 
 const SalesOrderForm = ({
@@ -34,7 +41,10 @@ const SalesOrderForm = ({
   storeId,
   mode = 'create',
   showStoreSelector = false,
-  showAdvancePayment = true
+  showAdvancePayment = true,
+  currentStoreName,
+  stores = [],
+  onStoreChange
 }: SalesOrderFormProps) => {
   const { user } = useAuth()
   const [formData, setFormData] = useState<SalesOrderFormData>({
@@ -160,6 +170,41 @@ const SalesOrderForm = ({
             store_id={storeId}
           />
         </Grid>
+
+        {/* Store Selection */}
+        {(showStoreSelector || currentStoreName) && (
+          <Grid item xs={12} sm={6}>
+            {showStoreSelector ? (
+              // Dropdown for super user/accounts incharge
+              <FormControl fullWidth required disabled={loading}>
+                <InputLabel>Store</InputLabel>
+                <Select
+                  value={storeId || ''}
+                  onChange={(e) => onStoreChange?.(e.target.value)}
+                  label="Store"
+                >
+                  {stores.map((store) => (
+                    <MenuItem key={store.id} value={store.id}>
+                      {store.store_name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            ) : currentStoreName ? (
+              // Read-only display for store managers
+              <TextField
+                fullWidth
+                label="Store"
+                value={currentStoreName}
+                disabled
+                InputProps={{
+                  readOnly: true,
+                }}
+                helperText="Your assigned store"
+              />
+            ) : null}
+          </Grid>
+        )}
 
         {/* Items Description */}
         <Grid item xs={12}>

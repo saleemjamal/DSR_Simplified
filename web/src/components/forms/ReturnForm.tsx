@@ -27,6 +27,9 @@ interface ReturnFormProps {
   mode?: 'create' | 'edit'
   showStoreSelector?: boolean
   allowBillLookup?: boolean
+  currentStoreName?: string // For store managers (read-only display)
+  stores?: Array<{ id: string; store_name: string }> // Store options for dropdown
+  onStoreChange?: (storeId: string) => void // Store selection callback
 }
 
 const PAYMENT_METHODS = [
@@ -45,7 +48,10 @@ const ReturnForm = ({
   storeId,
   mode = 'create',
   showStoreSelector = false,
-  allowBillLookup = true
+  allowBillLookup = true,
+  currentStoreName,
+  stores = [],
+  onStoreChange
 }: ReturnFormProps) => {
   const { user } = useAuth()
   const [formData, setFormData] = useState<ReturnFormData>({
@@ -196,6 +202,41 @@ const ReturnForm = ({
             </Select>
           </FormControl>
         </Grid>
+
+        {/* Store Selection */}
+        {(showStoreSelector || currentStoreName) && (
+          <Grid item xs={12} sm={6}>
+            {showStoreSelector ? (
+              // Dropdown for super user/accounts incharge
+              <FormControl fullWidth required disabled={loading}>
+                <InputLabel>Store</InputLabel>
+                <Select
+                  value={storeId || ''}
+                  onChange={(e) => onStoreChange?.(e.target.value)}
+                  label="Store"
+                >
+                  {stores.map((store) => (
+                    <MenuItem key={store.id} value={store.id}>
+                      {store.store_name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            ) : currentStoreName ? (
+              // Read-only display for store managers
+              <TextField
+                fullWidth
+                label="Store"
+                value={currentStoreName}
+                disabled
+                InputProps={{
+                  readOnly: true,
+                }}
+                helperText="Your assigned store"
+              />
+            ) : null}
+          </Grid>
+        )}
 
         {/* Original Bill Reference */}
         {allowBillLookup && (
