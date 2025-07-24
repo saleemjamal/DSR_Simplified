@@ -755,7 +755,10 @@ const HandBills = () => {
               error={error}
               storeId={needsStoreSelection ? selectedCreateStoreId : undefined}
               showStoreSelector={needsStoreSelection}
-              currentStoreName={!needsStoreSelection ? user?.stores?.store_name : undefined}
+              currentStoreName={!needsStoreSelection ? (
+                user?.stores?.store_name || 
+                (user?.store_id && stores.length > 0 ? stores.find(s => s.id === user.store_id)?.store_name : undefined)
+              ) : undefined}
               stores={stores}
               onStoreChange={setSelectedCreateStoreId}
             />

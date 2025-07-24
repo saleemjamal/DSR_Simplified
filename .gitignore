@@ -111,3 +111,4 @@ backend/scripts/delete-test-data-simple.sql
 backend/scripts/delete-test-data-with-feedback.sql
 backend/scripts/delete-test-data.sql
 backend/scripts/nuclear-delete-with-fk-handling.sql
+web/.env.example

@@ -41,7 +41,7 @@ import {
   Info
 } from '@mui/icons-material'
 import { format, addDays } from 'date-fns'
-import { GiftVoucher, VoucherFormData, Store } from '../types'
+import { GiftVoucher, VoucherFormData } from '../types'
 import { vouchersApi } from '../services/api'
 import { useAuth } from '../hooks/useAuth'
 import { useStores } from '../hooks/useStores'
@@ -97,6 +97,24 @@ const Vouchers = () => {
       setSelectedStoreId(stores[0].id)
     }
   }, [stores, needsStoreSelection, selectedStoreId])
+
+  // Get current store name for display
+  const getCurrentStoreName = () => {
+    if (needsStoreSelection) return undefined
+    
+    // Try nested user.stores first (from backend join)
+    if (user?.stores?.store_name) {
+      return user.stores.store_name
+    }
+    
+    // Fallback: look up store name from stores array using user.store_id
+    if (user?.store_id && stores.length > 0) {
+      const userStore = stores.find(store => store.id === user.store_id)
+      return userStore?.store_name
+    }
+    
+    return undefined
+  }
   
   // Search voucher state
   const [searchNumber, setSearchNumber] = useState('')
@@ -563,7 +581,7 @@ const Vouchers = () => {
               error={error}
               storeId={needsStoreSelection ? selectedStoreId : undefined}
               showStoreSelector={needsStoreSelection}
-              currentStoreName={!needsStoreSelection ? user?.stores?.store_name : undefined}
+              currentStoreName={getCurrentStoreName()}
               stores={stores}
               onStoreChange={setSelectedStoreId}
             />

@@ -1,11 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { storesApi } from '../services/api'
-
-interface Store {
-  id: string
-  store_name: string
-  store_code: string
-}
+import { Store } from '../types'
 
 interface StoresCache {
   data: Store[]
