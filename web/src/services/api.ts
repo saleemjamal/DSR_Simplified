@@ -353,7 +353,12 @@ export const damageApi = {
 
 // Dashboard API (consolidated endpoint for better performance)
 export const dashboardApi = {
-  getData: async (date?: string): Promise<{
+  getData: async (params?: {
+    date?: string
+    dateFrom?: string
+    dateTo?: string
+    store_id?: string
+  }): Promise<{
     salesSummary: { tender_type: string; total_amount: number; count: number }[]
     dashboardStats: {
       todayTotal: number
@@ -362,7 +367,7 @@ export const dashboardApi = {
       overdueCredits: number
     }
   }> => {
-    const response = await api.get('/dashboard', { params: { date } })
+    const response = await api.get('/dashboard', { params })
     return response.data
   }
 }

@@ -25,9 +25,9 @@ import {
   Assessment
 } from '@mui/icons-material'
 import { useAuth } from '../hooks/useAuth'
-import { useStores } from '../hooks/useStores'
 import { dashboardApi } from '../services/api'
 import { format } from 'date-fns'
+import FilterBar from '../components/FilterBar'
 
 interface DashboardCard {
   title: string
@@ -42,10 +42,14 @@ const Dashboard = () => {
   const { user, refreshProfile } = useAuth()
   const [loading, setLoading] = useState(true)
   
-  // Store selection for super users and accounts incharge
-  const needsStoreSelection = user?.role === 'super_user' || user?.role === 'accounts_incharge'
-  const { stores } = useStores()
-  const [selectedStoreId, setSelectedStoreId] = useState('') // Empty string = "All Stores"
+  // Filter state for dashboard data
+  const [dashboardFilter, setDashboardFilter] = useState({
+    period: 'today',
+    dateFrom: format(new Date(), 'yyyy-MM-dd'),
+    dateTo: format(new Date(), 'yyyy-MM-dd'),
+    store_id: '',
+    store_name: undefined as string | undefined
+  })
   const [todaySales, setTodaySales] = useState<any[]>([])
   const [dashboardStats, setDashboardStats] = useState({
     todayTotal: 0,
@@ -68,12 +72,37 @@ const Dashboard = () => {
     }
   }, [])
 
+  // Reload dashboard data when filter changes
+  useEffect(() => {
+    loadDashboardData()
+  }, [dashboardFilter])
+
   const loadDashboardData = async () => {
     try {
       setLoading(true)
       
-      // Load all dashboard data in one consolidated API call (90% faster)
-      const { salesSummary, dashboardStats } = await dashboardApi.getData(today)
+      // Prepare API parameters based on current filter
+      const params: any = {}
+      
+      // Add date filtering
+      if (dashboardFilter.dateFrom && dashboardFilter.dateTo) {
+        if (dashboardFilter.dateFrom === dashboardFilter.dateTo) {
+          // Single date filter
+          params.date = dashboardFilter.dateFrom
+        } else {
+          // Date range filter
+          params.dateFrom = dashboardFilter.dateFrom
+          params.dateTo = dashboardFilter.dateTo
+        }
+      }
+      
+      // Add store filter if selected
+      if (dashboardFilter.store_id) {
+        params.store_id = dashboardFilter.store_id
+      }
+      
+      // Load all dashboard data in one consolidated API call
+      const { salesSummary, dashboardStats } = await dashboardApi.getData(params)
       
       setTodaySales(salesSummary)
       setDashboardStats(dashboardStats)
@@ -91,23 +120,6 @@ const Dashboard = () => {
     return 'Good Evening'
   }
 
-  // Get filtered dashboard data based on selected store
-  const getFilteredDashboardData = () => {
-    // If no specific store selected, return all data (current behavior)
-    if (!selectedStoreId) {
-      return {
-        salesSummary: todaySales,
-        dashboardStats: dashboardStats
-      }
-    }
-
-    // For now, return the same data since API doesn't provide store breakdown
-    // TODO: When API provides store-level data, implement actual filtering here
-    return {
-      salesSummary: todaySales,
-      dashboardStats: dashboardStats
-    }
-  }
 
   const getCashVarianceDisplay = (stats = dashboardStats) => {
     const { cashVariance, cashVarianceStatus, cashTransactionCount } = stats
@@ -155,13 +167,10 @@ const Dashboard = () => {
   }
 
   const getRoleSpecificCards = (): DashboardCard[] => {
-    // Get filtered data for the selected store
-    const filteredData = getFilteredDashboardData()
-    
     const baseCards: DashboardCard[] = [
       {
         title: "Today's Sales",
-        value: `₹${filteredData.dashboardStats.todayTotal.toLocaleString()}`,
+        value: `₹${dashboardStats.todayTotal.toLocaleString()}`,
         icon: <TrendingUp />,
         color: 'primary',
         action: () => window.location.href = '/sales',
@@ -177,7 +186,7 @@ const Dashboard = () => {
     const managerCards: DashboardCard[] = [
       {
         title: 'Pending Approvals',
-        value: filteredData.dashboardStats.pendingApprovals,
+        value: dashboardStats.pendingApprovals,
         icon: <PendingActions />,
         color: 'warning',
         action: () => window.location.href = '/expenses',
@@ -185,18 +194,18 @@ const Dashboard = () => {
       },
       {
         title: 'Cash Reconciliation',
-        value: getCashVarianceDisplay(filteredData.dashboardStats),
+        value: getCashVarianceDisplay(dashboardStats),
         icon: <AccountBalance />,
-        color: getCashVarianceColor(filteredData.dashboardStats),
-        action: filteredData.dashboardStats.cashTransactionCount > 0 ? () => console.log('Cash details clicked') : undefined,
-        actionText: filteredData.dashboardStats.cashTransactionCount > 0 ? 'View Details' : undefined
+        color: getCashVarianceColor(dashboardStats),
+        action: dashboardStats.cashTransactionCount > 0 ? () => console.log('Cash details clicked') : undefined,
+        actionText: dashboardStats.cashTransactionCount > 0 ? 'View Details' : undefined
       }
     ]
 
     if (user?.role === 'super_user' || user?.role === 'accounts_incharge') {
       managerCards.push({
         title: 'Overdue Credits',
-        value: filteredData.dashboardStats.overdueCredits,
+        value: dashboardStats.overdueCredits,
         icon: <Warning />,
         color: 'error',
         action: () => window.location.href = '/reports',
@@ -263,41 +272,16 @@ const Dashboard = () => {
         <Typography variant="h4" gutterBottom>
           {getGreeting()}, {user?.first_name}!
         </Typography>
-        <Box display="flex" alignItems="center" gap={2} flexWrap="wrap">
-          <Typography variant="body1" color="text.secondary">
-            {format(new Date(), 'EEEE, MMMM do, yyyy')}
-          </Typography>
-          
-          {needsStoreSelection ? (
-            // Store dropdown for super users and accounts incharge
-            <Box display="flex" alignItems="center" gap={1}>
-              <Typography variant="body1" color="text.secondary">•</Typography>
-              <FormControl size="small" sx={{ minWidth: 180 }}>
-                <InputLabel>Store</InputLabel>
-                <Select
-                  value={selectedStoreId}
-                  onChange={(e) => setSelectedStoreId(e.target.value)}
-                  label="Store"
-                >
-                  <MenuItem value="">
-                    <Typography>All Stores</Typography>
-                  </MenuItem>
-                  {stores.map((store) => (
-                    <MenuItem key={store.id} value={store.id}>
-                      {store.store_code} - {store.store_name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
-          ) : (
-            // Static store name for store managers
-            <Typography variant="body1" color="text.secondary">
-              {user?.stores ? ` • Store: ${user.stores.store_name}` : ' • No Store Assigned'}
-            </Typography>
-          )}
-        </Box>
+        <Typography variant="body1" color="text.secondary">
+          {format(new Date(), 'EEEE, MMMM do, yyyy')}
+        </Typography>
       </Box>
+
+      {/* Filter Bar */}
+      <FilterBar
+        onFilterChange={setDashboardFilter}
+        currentFilter={dashboardFilter}
+      />
 
       {/* Key Metrics Cards */}
       <Grid container spacing={3} mb={4}>
