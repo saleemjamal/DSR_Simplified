@@ -30,7 +30,7 @@ router.get('/', authenticateUser, async (req, res) => {
 // Create gift voucher (everyone except accounts_incharge)
 router.post('/', authenticateUser, requireRole(['super_user', 'store_manager', 'cashier']), async (req, res) => {
   try {
-    const { original_amount, customer_name, customer_phone, notes, expiry_date, store_id, voucher_number } = req.body
+    const { original_amount, customer_name, customer_phone, notes, expiry_date, store_id, voucher_number, payment_method = 'cash' } = req.body
 
     // Validation
     if (!original_amount) {
@@ -52,6 +52,12 @@ router.post('/', authenticateUser, requireRole(['super_user', 'store_manager', '
 
     if (!customer_phone || customer_phone.trim() === '') {
       return res.status(400).json({ error: 'Customer phone is required' })
+    }
+
+    // Validate payment method
+    const validPaymentMethods = ['cash', 'credit_card', 'upi', 'bank_transfer']
+    if (!validPaymentMethods.includes(payment_method)) {
+      return res.status(400).json({ error: 'Invalid payment method' })
     }
 
     // Determine store_id (same pattern as other APIs)
@@ -159,6 +165,7 @@ router.post('/', authenticateUser, requireRole(['super_user', 'store_manager', '
       customer_id,           // NEW: Link to customer record
       customer_name,         // Keep for display/backup
       customer_phone,        // Keep for display/backup
+      payment_method,        // NEW: Payment method for cash variance
       notes
     }
 

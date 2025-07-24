@@ -41,6 +41,8 @@ const Dashboard = () => {
     todayTotal: 0,
     pendingApprovals: 0,
     cashVariance: 0,
+    cashVarianceStatus: 'unknown',
+    cashTransactionCount: 0,
     overdueCredits: 0
   })
 
@@ -79,6 +81,51 @@ const Dashboard = () => {
     return 'Good Evening'
   }
 
+  const getCashVarianceDisplay = () => {
+    const { cashVariance, cashVarianceStatus, cashTransactionCount } = dashboardStats
+
+    if (cashTransactionCount === 0) {
+      return 'No Transactions'
+    }
+
+    switch (cashVarianceStatus) {
+      case 'balanced':
+        return '✅ Balanced'
+      case 'surplus':
+        return `+₹${Math.abs(cashVariance).toLocaleString()}`
+      case 'deficit':
+        return `-₹${Math.abs(cashVariance).toLocaleString()}`
+      case 'no_store':
+        return 'No Store'
+      case 'error':
+        return 'Error'
+      default:
+        return `₹${Math.abs(cashVariance).toLocaleString()}`
+    }
+  }
+
+  const getCashVarianceColor = (): 'primary' | 'secondary' | 'success' | 'warning' | 'error' => {
+    const { cashVarianceStatus, cashTransactionCount } = dashboardStats
+
+    if (cashTransactionCount === 0) {
+      return 'secondary'
+    }
+
+    switch (cashVarianceStatus) {
+      case 'balanced':
+        return 'success'
+      case 'surplus':
+        return 'warning'
+      case 'deficit':
+        return 'error'
+      case 'no_store':
+      case 'error':
+        return 'secondary'
+      default:
+        return 'primary'
+    }
+  }
+
   const getRoleSpecificCards = (): DashboardCard[] => {
     const baseCards: DashboardCard[] = [
       {
@@ -106,10 +153,12 @@ const Dashboard = () => {
         actionText: 'Review'
       },
       {
-        title: 'Cash Variance',
-        value: `₹${Math.abs(dashboardStats.cashVariance).toLocaleString()}`,
+        title: 'Cash Reconciliation',
+        value: getCashVarianceDisplay(),
         icon: <AccountBalance />,
-        color: dashboardStats.cashVariance === 0 ? 'success' : 'error'
+        color: getCashVarianceColor(),
+        action: dashboardStats.cashTransactionCount > 0 ? () => console.log('Cash details clicked') : undefined,
+        actionText: dashboardStats.cashTransactionCount > 0 ? 'View Details' : undefined
       }
     ]
 
@@ -289,6 +338,72 @@ const Dashboard = () => {
                     </Button>
                   ))}
                 </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      )}
+
+      {/* Cash Reconciliation Details */}
+      {(user?.role !== 'cashier' && dashboardStats.cashTransactionCount > 0) && (
+        <Grid container spacing={3} mb={4}>
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>
+                <Box display="flex" alignItems="center" mb={2}>
+                  <AccountBalance sx={{ mr: 1 }} />
+                  <Typography variant="h6">
+                    Cash Reconciliation Details
+                  </Typography>
+                  <Chip 
+                    label={dashboardStats.cashVarianceStatus || 'Unknown'} 
+                    color={getCashVarianceColor()} 
+                    size="small" 
+                    sx={{ ml: 2 }}
+                  />
+                </Box>
+                <Typography variant="body2" color="text.secondary" mb={2}>
+                  Today's cash transactions and variance calculation for {format(new Date(), 'MMM dd, yyyy')}
+                </Typography>
+                <Box display="flex" gap={4} flexWrap="wrap">
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">
+                      Cash Transactions
+                    </Typography>
+                    <Typography variant="h6">
+                      {dashboardStats.cashTransactionCount}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">
+                      Variance Amount
+                    </Typography>
+                    <Typography variant="h6" color={getCashVarianceColor() === 'success' ? 'success.main' : getCashVarianceColor() === 'error' ? 'error.main' : 'warning.main'}>
+                      {getCashVarianceDisplay()}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">
+                      Status
+                    </Typography>
+                    <Typography variant="body1">
+                      {dashboardStats.cashVarianceStatus === 'balanced' ? '✅ All balanced' :
+                       dashboardStats.cashVarianceStatus === 'surplus' ? '📈 Cash surplus' :
+                       dashboardStats.cashVarianceStatus === 'deficit' ? '📉 Cash deficit' :
+                       '❓ Calculating...'}
+                    </Typography>
+                  </Box>
+                </Box>
+                {dashboardStats.cashVarianceStatus === 'balanced' && (
+                  <Alert severity="success" sx={{ mt: 2 }}>
+                    Perfect! Your cash is perfectly balanced today.
+                  </Alert>
+                )}
+                {(dashboardStats.cashVarianceStatus === 'surplus' || dashboardStats.cashVarianceStatus === 'deficit') && (
+                  <Alert severity="warning" sx={{ mt: 2 }}>
+                    Cash variance detected. Please verify your cash count and transactions.
+                  </Alert>
+                )}
               </CardContent>
             </Card>
           </Grid>

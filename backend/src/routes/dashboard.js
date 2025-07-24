@@ -37,12 +37,16 @@ router.get('/', authenticateUser, async (req, res) => {
     const todayTotal = salesSummary.reduce((sum, item) => sum + item.total_amount, 0)
     
     let cashVariance = 0
+    let cashVarianceStatus = 'unknown'
+    let cashTransactionCount = 0
     let pendingApprovals = 0
     
     if (req.user.role !== 'cashier') {
       if (results[1] && results[1].status === 'fulfilled') {
-        // Cash reconciliation variance calculation would go here
-        cashVariance = 0 // Placeholder
+        const cashReconData = results[1].value
+        cashVariance = cashReconData.variance || 0
+        cashVarianceStatus = cashReconData.status || 'unknown'
+        cashTransactionCount = cashReconData.transactionCount || 0
       }
       
       if (results[2] && results[2].status === 'fulfilled') {
@@ -57,6 +61,8 @@ router.get('/', authenticateUser, async (req, res) => {
         todayTotal,
         pendingApprovals,
         cashVariance,
+        cashVarianceStatus,
+        cashTransactionCount,
         overdueCredits: 0 // TODO: Implement from API
       }
     })
@@ -108,8 +114,46 @@ async function getSalesSummary(supabase, user, date) {
 
 // Helper function: Get cash reconciliation (placeholder)
 async function getCashReconciliation(supabase, user, date) {
-  // TODO: Implement actual cash reconciliation logic
-  return { variance: 0 }
+  try {
+    // Determine which store to calculate variance for
+    let storeId = user.store_id
+    
+    // For super users without a specific store, we could:
+    // - Calculate for all stores (aggregate)
+    // - Show 0 variance (current approach)
+    // - Require store selection
+    if (!storeId) {
+      return { variance: 0, status: 'no_store' }
+    }
+
+    // Call our cash variance calculation function
+    const { data, error } = await supabase
+      .rpc('get_cash_variance_summary', {
+        p_store_id: storeId,
+        p_date: date
+      })
+
+    if (error) {
+      console.error('Cash variance calculation error:', error)
+      return { variance: 0, status: 'error' }
+    }
+
+    // Extract results from the function
+    const result = data && data.length > 0 ? data[0] : null
+    
+    if (!result) {
+      return { variance: 0, status: 'no_data' }
+    }
+
+    return {
+      variance: parseFloat(result.variance_amount || 0),
+      status: result.variance_status || 'unknown',
+      transactionCount: parseInt(result.total_cash_transactions || 0)
+    }
+  } catch (error) {
+    console.error('Cash reconciliation error:', error)
+    return { variance: 0, status: 'error' }
+  }
 }
 
 // Helper function: Get pending approvals count

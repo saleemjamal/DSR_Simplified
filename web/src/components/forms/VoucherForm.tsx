@@ -7,7 +7,11 @@ import {
   Typography,
   InputAdornment,
   Alert,
-  CircularProgress
+  CircularProgress,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material'
 import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
@@ -44,7 +48,8 @@ const VoucherForm = ({
     expiry_date: initialData.expiry_date || '',
     customer_name: initialData.customer_name || '',
     customer_phone: initialData.customer_phone || '',
-    notes: initialData.notes || ''
+    notes: initialData.notes || '',
+    payment_method: initialData.payment_method || 'cash'
   })
   const [internalError, setInternalError] = useState('')
 
@@ -181,6 +186,23 @@ const VoucherForm = ({
               }}
               minDate={new Date()}
             />
+          </Grid>
+
+          {/* Payment Method */}
+          <Grid item xs={12} sm={6}>
+            <FormControl fullWidth required disabled={loading}>
+              <InputLabel>Payment Method</InputLabel>
+              <Select
+                value={formData.payment_method || 'cash'}
+                onChange={(e) => handleInputChange('payment_method', e.target.value)}
+                label="Payment Method"
+              >
+                <MenuItem value="cash">Cash</MenuItem>
+                <MenuItem value="credit_card">Credit Card</MenuItem>
+                <MenuItem value="upi">UPI</MenuItem>
+                <MenuItem value="bank_transfer">Bank Transfer</MenuItem>
+              </Select>
+            </FormControl>
           </Grid>
 
           {/* Customer Name */}

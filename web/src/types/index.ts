@@ -195,6 +195,7 @@ export interface VoucherFormData {
   customer_phone: string     // Now required
   notes?: string
   voucher_number?: string
+  payment_method?: 'cash' | 'credit_card' | 'upi' | 'bank_transfer'
 }
 
 // Dashboard types
@@ -358,6 +359,7 @@ export interface HandBillFormData {
   items_description?: string
   original_image_url?: string
   notes?: string
+  payment_method?: 'cash' | 'credit_card' | 'upi' | 'store_credit'
 }
 
 export interface ReturnFormData {

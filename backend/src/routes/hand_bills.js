@@ -137,12 +137,19 @@ router.post('/', authenticateUser, requireRole(['store_manager', 'super_user', '
       items_description,
       original_image_url,
       notes,
-      store_id
+      store_id,
+      payment_method = 'cash'
     } = req.body
 
     // Validation
     if (!amount || amount <= 0) {
       return res.status(400).json({ error: 'Valid amount is required' })
+    }
+
+    // Validate payment method
+    const validPaymentMethods = ['cash', 'credit_card', 'upi', 'store_credit']
+    if (!validPaymentMethods.includes(payment_method)) {
+      return res.status(400).json({ error: 'Invalid payment method' })
     }
 
     // Determine store_id
@@ -192,6 +199,7 @@ router.post('/', authenticateUser, requireRole(['store_manager', 'super_user', '
       amount: parseFloat(amount),
       items_description: items_description?.trim() || null,
       original_image_url: original_image_url?.trim() || null,
+      payment_method: payment_method,
       status: 'pending',
       notes: notes?.trim() || null,
       created_by: req.user.id

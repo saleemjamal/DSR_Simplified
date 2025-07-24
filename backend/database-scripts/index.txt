@@ -1,0 +1,56 @@
+DSR DATABASE SCRIPTS - QUICK INDEX
+=====================================
+
+📁 ORGANIZED STRUCTURE:
+
+/schema/
+├── schema.sql                          [CORE] Complete database schema
+└── rls_policies.sql                    [SECURITY] Row level security
+
+/migrations/
+├── migration_enhanced_sales_system.sql [UPDATE] Enhanced sales features
+├── add_customer_id_to_vouchers.sql     [UPDATE] Customer ID tracking
+└── add_customer_origin_store.sql       [UPDATE] Origin store tracking
+
+/functions/
+└── functions_triggers.sql              [LOGIC] Business logic & triggers
+
+/performance/
+├── performance_indexes.sql             [SPEED] Performance indexes
+└── performance_indexes_safe.sql        [SPEED] Safe performance indexes
+
+/data-management/
+├── initial_data_final.sql              [DATA] Initial master data
+├── create_test_users_fixed.sql         [USERS] Test user creation
+└── complete_setup.sql                  [SETUP] Complete setup script
+
+/testing/
+├── delete-all-data-keep-superuser.sql  [⚠️] Clean all except superuser
+├── delete-test-data-comprehensive.sql  [⚠️] Comprehensive cleanup
+├── delete-test-data-simple.sql         [⚠️] Simple cleanup
+├── delete-test-data-with-feedback.sql  [⚠️] Cleanup with feedback
+├── delete-test-data.sql                [⚠️] Basic deletion
+├── nuclear-delete-with-fk-handling.sql [💀] Complete reset
+└── cleanup-test-data.js                [🔧] JavaScript cleanup
+
+/cash-reconciliation/
+├── 01-add-payment-method-columns.sql   [NEW] Add payment methods
+└── 02-cash-reconciliation-function.sql [NEW] Cash variance calculation
+
+QUICK SETUP COMMANDS:
+====================
+
+Fresh Install:
+--------------
+schema/schema.sql → schema/rls_policies.sql → functions/functions_triggers.sql → 
+data-management/initial_data_final.sql → performance/performance_indexes_safe.sql → 
+cash-reconciliation/01-add-payment-method-columns.sql → 
+cash-reconciliation/02-cash-reconciliation-function.sql
+
+Existing Database Upgrade:
+--------------------------
+migrations/[needed-migrations].sql → 
+cash-reconciliation/01-add-payment-method-columns.sql → 
+cash-reconciliation/02-cash-reconciliation-function.sql
+
+⚠️ ALWAYS BACKUP FIRST: pg_dump your_db > backup.sql

@@ -9,7 +9,8 @@
       "Bash(npm run dev:*)",
       "Bash(PORT=3004 npm start)",
       "Bash(cp:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(ls:*)"
     ],
     "deny": []
   }

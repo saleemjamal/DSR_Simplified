@@ -7,7 +7,11 @@ import {
   Typography,
   InputAdornment,
   Alert,
-  CircularProgress
+  CircularProgress,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material'
 import { HandBillFormData, Customer } from '../../types'
 import { useAuth } from '../../hooks/useAuth'
@@ -42,7 +46,8 @@ const HandBillForm = ({
     amount: initialData.amount || 0,
     items_description: initialData.items_description || '',
     original_image_url: initialData.original_image_url || '',
-    notes: initialData.notes || ''
+    notes: initialData.notes || '',
+    payment_method: initialData.payment_method || 'cash'
   })
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [internalError, setInternalError] = useState('')
@@ -160,8 +165,25 @@ const HandBillForm = ({
           />
         </Grid>
 
-        {/* Items Description */}
+        {/* Payment Method */}
         <Grid item xs={12} sm={6}>
+          <FormControl fullWidth required disabled={loading}>
+            <InputLabel>Payment Method</InputLabel>
+            <Select
+              value={formData.payment_method || 'cash'}
+              onChange={(e) => handleInputChange('payment_method', e.target.value)}
+              label="Payment Method"
+            >
+              <MenuItem value="cash">Cash</MenuItem>
+              <MenuItem value="credit_card">Credit Card</MenuItem>
+              <MenuItem value="upi">UPI</MenuItem>
+              <MenuItem value="store_credit">Store Credit</MenuItem>
+            </Select>
+          </FormControl>
+        </Grid>
+
+        {/* Items Description */}
+        <Grid item xs={12}>
           <TextField
             fullWidth
             label="Items Description"

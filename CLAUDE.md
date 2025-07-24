@@ -54,13 +54,26 @@ npm run db:migrate    # Run migrations
 npm run db:seed       # Seed database
 ```
 
+#### **Database Scripts Organization**
+All database scripts must be created in `/backend/database-scripts/` with proper categorization:
+
+- **`/schema/`** - Core database structure and RLS policies
+- **`/migrations/`** - Schema changes and updates  
+- **`/functions/`** - Stored procedures and triggers
+- **`/performance/`** - Indexes and optimization
+- **`/data-management/`** - Initial data and user setup
+- **`/testing/`** - Cleanup and testing utilities
+- **`/[feature-name]/`** - Feature-specific scripts (e.g., `/cash-reconciliation/`)
+
+**Important:** Never create database scripts in scattered locations. Always use the organized structure with appropriate subdirectories. See `/backend/database-scripts/README.md` for detailed documentation.
+
 ## Architecture
 
 ### Monorepo Structure
 - `/backend` - Express.js API server with JWT auth and Supabase integration
 - `/web` - React 19 SPA with Material-UI and TypeScript
 - `/docs` - Comprehensive documentation (requirements, database schema, guides)
-- `/scripts` - Data management and utility scripts
+- `/backend/database-scripts` - Organized database scripts by feature and function
 
 ### API Design
 - RESTful API with `/api/v1` prefix
