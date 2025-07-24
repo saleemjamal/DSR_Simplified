@@ -107,11 +107,12 @@ The project uses a standardized form component pattern located in `/web/src/comp
 - `ReturnForm.tsx` - Return/RRN processing with payment methods
 
 #### **Form Integration Status:**
-- ✅ **SalesEntryModal** - All embedded forms replaced with standardized components
-- ✅ **Standalone Pages** - Vouchers, HandBills, SalesOrders pages use shared forms
-- ✅ **Store Validation** - Super users/accounts incharge must select store manually
-- ✅ **Role-based Logic** - Store managers/cashiers have auto-populated stores
+- ✅ **SalesEntryModal** - Redundant tabs removed (GV, HB, SO, RRN), now only handles Daily Entry
+- ✅ **Standalone Pages** - Vouchers, HandBills, SalesOrders, Returns pages use shared forms
+- ✅ **Store Selection UX** - Store managers see read-only store name, super users get dropdown
+- ✅ **Role-based Logic** - Proper conditional rendering based on user roles
 - ✅ **Payment Method Integration** - All forms include payment method selectors
+- ✅ **Performance Optimization** - useStores hook with 5-minute caching implemented
 
 #### **Form Development Guidelines:**
 1. **Reuse existing forms** instead of creating duplicates
@@ -120,6 +121,41 @@ The project uses a standardized form component pattern located in `/web/src/comp
 4. Handle `customer_id` and `origin_store_id` for customer tracking
 5. Follow the validation patterns with proper error handling
 6. Use wrapper functions for API integration in parent components
+7. **Store Selection Pattern** - Conditional rendering based on user role:
+   ```typescript
+   {showStoreSelector ? (
+     <Select value={storeId || ''} onChange={onStoreChange}>
+       {stores.map(store => <MenuItem key={store.id} value={store.id}>{store.store_name}</MenuItem>)}
+     </Select>
+   ) : currentStoreName ? (
+     <TextField value={currentStoreName} disabled helperText="Your assigned store" />
+   ) : null}
+   ```
+
+### Frontend Caching Architecture (✅ Recently Implemented)
+Located in `/web/src/hooks/useStores.ts`, the caching system provides:
+
+#### **useStores Hook Features:**
+- **5-minute Cache Duration** - Matches backend Cache-Control headers
+- **Automatic Expiration** - Timestamps manage cache invalidation
+- **Error Handling** - Graceful fallback for API failures
+- **Performance Optimization** - Reduces redundant API calls across forms
+
+#### **Implementation Pattern:**
+```typescript
+const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+let storesCache: StoresCache | null = null
+
+export const useStores = () => {
+  // Check cache validity and fetch if needed
+  // Return cached data with loading states
+}
+```
+
+#### **Usage Across Components:**
+- **Dashboard** - Store dropdown for super users
+- **Transaction Forms** - VoucherForm, HandBillForm, SalesOrderForm, ReturnForm
+- **Parent Pages** - Vouchers, HandBills, SalesOrders, Returns pages
 
 ### API Integration
 - All API calls go through `/web/src/api/` service modules
@@ -135,9 +171,10 @@ The project uses a standardized form component pattern located in `/web/src/comp
 
 ### Performance Considerations
 - Dashboard uses consolidated API calls to reduce load time
-- Implement caching where appropriate (store dropdowns, user data)
+- **useStores Hook** - 5-minute caching for store dropdown data across all forms
 - Use React.memo for expensive component renders
 - Lazy load routes and components
+- **Frontend Caching Pattern** - Cached data with expiration timestamps for optimal performance
 
 ## Current Development Focus
 
@@ -145,16 +182,19 @@ Based on TODO.md updates (July 2025):
 
 ### **Completed Major Milestones:**
 - ✅ **Form Standardization** - 100% code duplication reduction achieved (all forms integrated)
-- ✅ **SalesEntryModal Integration** - All embedded forms replaced with standardized components
+- ✅ **Store Selection UX** - Fixed store selection across all transaction forms with proper role-based display
+- ✅ **UI Redundancy Removal** - Removed duplicate tabs from Sales Entry Modal (GV, HB, SO, RRN)
+- ✅ **Returns Page** - Created dedicated Returns management page with full CRUD functionality
+- ✅ **Frontend Caching** - Implemented useStores hook with 5-minute caching for performance
+- ✅ **Dashboard Store Filtering** - Added store dropdown for super users and accounts incharge
 - ✅ **Store Access Control** - Proper validation for super users and accounts incharge
 - ✅ **Customer Origin Tracking** - Full implementation with store validation
 - ✅ **Cash Reconciliation System** - Automatic variance calculation with real-time dashboard display
 
 ### **Remaining Tasks:**
-- [ ] **Returns Page Creation** - No dedicated Returns page exists yet (API available)
-- [ ] **Frontend Caching** - Store dropdown and user data caching
 - [ ] **Form Testing** - Comprehensive testing of form consistency
 - [ ] **Performance Optimization** - Query result caching and connection pooling
+- [ ] **Dashboard API Enhancement** - Implement store-level data filtering on backend
 
 ## Important Business Logic
 
