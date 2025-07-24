@@ -87,6 +87,23 @@ const Vouchers = () => {
     voucher_number: ''
   })
   
+  // Search voucher state
+  const [searchNumber, setSearchNumber] = useState('')
+  const [searchResult, setSearchResult] = useState<GiftVoucher | null>(null)
+  const [searchLoading, setSearchLoading] = useState(false)
+  
+  // Redeem voucher state
+  const [redeemModalOpen, setRedeemModalOpen] = useState(false)
+  const [voucherToRedeem, setVoucherToRedeem] = useState<GiftVoucher | null>(null)
+  const [redeemLoading, setRedeemLoading] = useState(false)
+
+  const { user } = useAuth()
+  
+  // Check if user can create vouchers (everyone except accounts_incharge)
+  const canCreateVouchers = user?.role !== 'accounts_incharge'
+  const canCancelVouchers = user?.role === 'super_user' || user?.role === 'accounts_incharge'
+  const needsStoreSelection = user?.role === 'super_user' || user?.role === 'accounts_incharge'
+  
   // Store selection state
   const { stores, loading: storesLoading } = useStores()
   const [selectedStoreId, setSelectedStoreId] = useState('')
@@ -115,23 +132,6 @@ const Vouchers = () => {
     
     return undefined
   }
-  
-  // Search voucher state
-  const [searchNumber, setSearchNumber] = useState('')
-  const [searchResult, setSearchResult] = useState<GiftVoucher | null>(null)
-  const [searchLoading, setSearchLoading] = useState(false)
-  
-  // Redeem voucher state
-  const [redeemModalOpen, setRedeemModalOpen] = useState(false)
-  const [voucherToRedeem, setVoucherToRedeem] = useState<GiftVoucher | null>(null)
-  const [redeemLoading, setRedeemLoading] = useState(false)
-
-  const { user } = useAuth()
-  
-  // Check if user can create vouchers (everyone except accounts_incharge)
-  const canCreateVouchers = user?.role !== 'accounts_incharge'
-  const canCancelVouchers = user?.role === 'super_user' || user?.role === 'accounts_incharge'
-  const needsStoreSelection = user?.role === 'super_user' || user?.role === 'accounts_incharge'
 
   useEffect(() => {
     loadVouchers()
