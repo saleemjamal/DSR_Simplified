@@ -66,6 +66,12 @@ const VoucherForm = ({
       return false
     }
 
+    // Store selection validation for super users and accounts incharge
+    if (showStoreSelector && !storeId) {
+      setInternalError('Please select a store')
+      return false
+    }
+
     if (requireCustomer) {
       if (!formData.customer_name.trim()) {
         setInternalError('Customer name is required')

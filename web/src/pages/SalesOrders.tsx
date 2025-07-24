@@ -47,6 +47,7 @@ import { SalesOrder, Customer, Store, SalesOrderFormData } from '../types'
 import { salesOrdersApi, storesApi } from '../services/api'
 import { useAuth } from '../hooks/useAuth'
 import CustomerSelector from '../components/CustomerSelector'
+import SalesOrderForm from '../components/forms/SalesOrderForm'
 
 interface TabPanelProps {
   children?: React.ReactNode
@@ -202,6 +203,42 @@ const SalesOrders = () => {
     } catch (error: any) {
       console.error('Error cancelling order:', error)
       setError(error.response?.data?.error || 'Failed to cancel order')
+    }
+  }
+
+  // Wrapper function for SalesOrderForm component
+  const handleSalesOrderFormSubmit = async (data: SalesOrderFormData & { store_id?: string }) => {
+    try {
+      setCreateLoading(true)
+      setError('')
+      
+      const requestData: any = {
+        ...data
+      }
+      
+      if (needsStoreSelection && selectedCreateStoreId) {
+        requestData.store_id = selectedCreateStoreId
+      }
+      
+      await salesOrdersApi.create(requestData)
+      
+      setSuccess('Sales order created successfully!')
+      await loadOrders()
+      setCreateModalOpen(false)
+      setCreateForm({
+        customer_id: '',
+        items_description: '',
+        total_estimated_amount: 0,
+        advance_paid: 0,
+        notes: ''
+      })
+      setSelectedCreateStoreId('')
+      setSelectedCreateCustomer(null)
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to create sales order')
+      throw err
+    } finally {
+      setCreateLoading(false)
     }
   }
 
@@ -581,87 +618,22 @@ const SalesOrders = () => {
       <Dialog open={createModalOpen} onClose={() => setCreateModalOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Create New Sales Order</DialogTitle>
         <DialogContent>
-          <Box display="flex" flexDirection="column" gap={2} sx={{ mt: 1 }}>
-            {/* Store Selection for Super Users/Accounts */}
-            {needsStoreSelection && (
-              <FormControl required>
-                <InputLabel>Select Store</InputLabel>
-                <Select
-                  value={selectedCreateStoreId}
-                  onChange={(e) => setSelectedCreateStoreId(e.target.value)}
-                  label="Select Store"
-                >
-                  {stores.map((store) => (
-                    <MenuItem key={store.id} value={store.id}>
-                      {store.store_code} - {store.store_name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-            
-            <CustomerSelector
-              value={selectedCreateCustomer}
-              onChange={setSelectedCreateCustomer}
-              label="Customer"
-              required={true}
-              allowQuickAdd={true}
-            />
-            
-            <TextField
-              label="Items Description"
-              multiline
-              rows={3}
-              value={createForm.items_description}
-              onChange={(e) => setCreateForm({ ...createForm, items_description: e.target.value })}
-              required
-              placeholder="Describe the items to be ordered"
-            />
-            
-            <TextField
-              label="Total Estimated Amount"
-              type="number"
-              value={createForm.total_estimated_amount || ''}
-              onChange={(e) => setCreateForm({ ...createForm, total_estimated_amount: parseFloat(e.target.value) || 0 })}
-              required
-              InputProps={{
-                startAdornment: <InputAdornment position="start">₹</InputAdornment>
+          <Box sx={{ mt: 2 }}>
+            <SalesOrderForm
+              initialData={createForm}
+              onSubmit={handleSalesOrderFormSubmit}
+              onCancel={() => {
+                setCreateModalOpen(false)
+                setSelectedCreateStoreId('')
+                setSelectedCreateCustomer(null)
               }}
-              inputProps={{ min: 0, step: 0.01 }}
-            />
-            
-            <TextField
-              label="Advance Payment"
-              type="number"
-              value={createForm.advance_paid || ''}
-              onChange={(e) => setCreateForm({ ...createForm, advance_paid: parseFloat(e.target.value) || 0 })}
-              InputProps={{
-                startAdornment: <InputAdornment position="start">₹</InputAdornment>
-              }}
-              inputProps={{ min: 0, step: 0.01, max: createForm.total_estimated_amount }}
-              helperText="Optional advance payment received"
-            />
-            
-            <TextField
-              label="Notes"
-              multiline
-              rows={2}
-              value={createForm.notes}
-              onChange={(e) => setCreateForm({ ...createForm, notes: e.target.value })}
-              placeholder="Additional notes for the order"
+              loading={createLoading}
+              error={error}
+              storeId={needsStoreSelection ? selectedCreateStoreId : undefined}
+              showStoreSelector={needsStoreSelection}
             />
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCreateModalOpen(false)}>Cancel</Button>
-          <Button
-            onClick={handleCreateSalesOrder}
-            variant="contained"
-            disabled={createLoading}
-          >
-            {createLoading ? 'Creating...' : 'Create Sales Order'}
-          </Button>
-        </DialogActions>
       </Dialog>
     </Box>
   )

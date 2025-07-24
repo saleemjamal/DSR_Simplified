@@ -27,7 +27,7 @@ import {
   Grid,
   Divider
 } from '@mui/material'
-import { handBillsApi, salesOrdersApi, salesApi, returnsApi } from '../services/api'
+import { handBillsApi, salesOrdersApi, returnsApi } from '../services/api'
 import { 
   CardGiftcard, 
   Receipt, 
@@ -49,6 +49,10 @@ import {
 import { salesApi, storesApi, vouchersApi } from '../services/api'
 import { useAuth } from '../hooks/useAuth'
 import CustomerSelector from './CustomerSelector'
+import VoucherForm from './forms/VoucherForm'
+import HandBillForm from './forms/HandBillForm'
+import SalesOrderForm from './forms/SalesOrderForm'
+import ReturnForm from './forms/ReturnForm'
 
 interface DailyTender {
   tender_type: string
@@ -231,6 +235,32 @@ const SalesEntryModal = ({ open, onClose, onSuccess }: SalesEntryModalProps) => 
     }
   }
 
+  // Wrapper function for VoucherForm component
+  const handleVoucherFormSubmit = async (data: VoucherFormData & { store_id?: string }) => {
+    try {
+      setSubmitting(true)
+      setError('')
+      
+      const requestData: any = {
+        ...data
+      }
+      
+      if (needsStoreSelection && selectedStoreId) {
+        requestData.store_id = selectedStoreId
+      }
+      
+      await vouchersApi.create(requestData)
+      
+      onSuccess()
+      handleClose()
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to create voucher')
+      throw err // Re-throw to let the form component handle it
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   const handleGiftVoucherSubmit = async () => {
     try {
       setSubmitting(true)
@@ -279,6 +309,32 @@ const SalesEntryModal = ({ open, onClose, onSuccess }: SalesEntryModalProps) => 
     }
   }
 
+  // Wrapper function for HandBillForm component
+  const handleHandBillFormSubmit = async (data: HandBillFormData & { store_id?: string }) => {
+    try {
+      setSubmitting(true)
+      setError('')
+      
+      const requestData: any = {
+        ...data
+      }
+      
+      if (needsStoreSelection && selectedStoreId) {
+        requestData.store_id = selectedStoreId
+      }
+      
+      await handBillsApi.create(requestData)
+      
+      onSuccess()
+      handleClose()
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to create hand bill')
+      throw err
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   const handleHandBillSubmit = async () => {
     try {
       setSubmitting(true)
@@ -309,6 +365,32 @@ const SalesEntryModal = ({ open, onClose, onSuccess }: SalesEntryModalProps) => 
       handleClose()
     } catch (err: any) {
       setError(err.message || 'Failed to create hand bill')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  // Wrapper function for SalesOrderForm component
+  const handleSalesOrderFormSubmit = async (data: SalesOrderFormData & { store_id?: string }) => {
+    try {
+      setSubmitting(true)
+      setError('')
+      
+      const requestData: any = {
+        ...data
+      }
+      
+      if (needsStoreSelection && selectedStoreId) {
+        requestData.store_id = selectedStoreId
+      }
+      
+      await salesOrdersApi.create(requestData)
+      
+      onSuccess()
+      handleClose()
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to create sales order')
+      throw err
     } finally {
       setSubmitting(false)
     }
@@ -359,6 +441,32 @@ const SalesEntryModal = ({ open, onClose, onSuccess }: SalesEntryModalProps) => 
       handleClose()
     } catch (err: any) {
       setError(err.message || 'Failed to create sales order')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  // Wrapper function for ReturnForm component
+  const handleReturnFormSubmit = async (data: ReturnFormData & { store_id?: string }) => {
+    try {
+      setSubmitting(true)
+      setError('')
+      
+      const requestData: any = {
+        ...data
+      }
+      
+      if (needsStoreSelection && selectedStoreId) {
+        requestData.store_id = selectedStoreId
+      }
+      
+      await returnsApi.create(requestData)
+      
+      onSuccess()
+      handleClose()
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to create return')
+      throw err
     } finally {
       setSubmitting(false)
     }
@@ -572,303 +680,81 @@ const SalesEntryModal = ({ open, onClose, onSuccess }: SalesEntryModalProps) => 
 
         {/* Gift Voucher Tab */}
         {tabValue === 1 && (
-          <Box display="flex" flexDirection="column" gap={2}>
-            <Typography variant="h6" color="primary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box>
+            <Typography variant="h6" color="primary" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
               <CardGiftcard />
               Create Gift Voucher
             </Typography>
             
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  label="Amount"
-                  type="number"
-                  value={voucherForm.original_amount || ''}
-                  onChange={(e) => setVoucherForm({ ...voucherForm, original_amount: parseFloat(e.target.value) || 0 })}
-                  fullWidth
-                  required
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start">₹</InputAdornment>
-                  }}
-                  inputProps={{ min: 0, step: 0.01 }}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  label="Expiry Date"
-                  type="date"
-                  value={voucherForm.expiry_date}
-                  onChange={(e) => setVoucherForm({ ...voucherForm, expiry_date: e.target.value })}
-                  fullWidth
-                  required
-                  InputLabelProps={{ shrink: true }}
-                  inputProps={{ min: format(new Date(), 'yyyy-MM-dd') }}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  label="Voucher Number (Optional)"
-                  value={voucherForm.voucher_number}
-                  onChange={(e) => setVoucherForm({ ...voucherForm, voucher_number: e.target.value })}
-                  fullWidth
-                  placeholder="Leave empty to auto-generate"
-                  helperText="If empty, system will auto-generate voucher number"
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  label="Customer Name *"
-                  value={voucherForm.customer_name}
-                  onChange={(e) => setVoucherForm({ ...voucherForm, customer_name: e.target.value })}
-                  fullWidth
-                  required
-                  placeholder="Enter customer name"
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  label="Customer Phone *"
-                  value={voucherForm.customer_phone}
-                  onChange={(e) => setVoucherForm({ ...voucherForm, customer_phone: e.target.value })}
-                  fullWidth
-                  required
-                  placeholder="+91 9876543210"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  label="Notes"
-                  multiline
-                  rows={2}
-                  value={voucherForm.notes}
-                  onChange={(e) => setVoucherForm({ ...voucherForm, notes: e.target.value })}
-                  fullWidth
-                  placeholder="Additional notes for the voucher"
-                />
-              </Grid>
-            </Grid>
+            <VoucherForm
+              initialData={voucherForm}
+              onSubmit={handleVoucherFormSubmit}
+              onCancel={handleClose}
+              loading={submitting}
+              error={error}
+              storeId={needsStoreSelection ? selectedStoreId : undefined}
+              showStoreSelector={needsStoreSelection}
+            />
           </Box>
         )}
 
         {/* Hand Bill Tab */}
         {tabValue === 2 && (
-          <Box display="flex" flexDirection="column" gap={2}>
-            <Typography variant="h6" color="primary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box>
+            <Typography variant="h6" color="primary" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
               <Receipt />
               Create Hand Bill
             </Typography>
             
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <CustomerSelector
-                  value={selectedHandBillCustomer}
-                  onChange={setSelectedHandBillCustomer}
-                  label="Customer (Optional)"
-                  allowQuickAdd={true}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  label="Amount"
-                  type="number"
-                  value={handBillForm.amount || ''}
-                  onChange={(e) => setHandBillForm({ ...handBillForm, amount: parseFloat(e.target.value) || 0 })}
-                  fullWidth
-                  required
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start">₹</InputAdornment>
-                  }}
-                  inputProps={{ min: 0, step: 0.01 }}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  label="Original Image URL"
-                  value={handBillForm.original_image_url || ''}
-                  onChange={(e) => setHandBillForm({ ...handBillForm, original_image_url: e.target.value })}
-                  fullWidth
-                  placeholder="URL to hand bill image"
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start"><Upload /></InputAdornment>
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  label="Items Description"
-                  multiline
-                  rows={3}
-                  value={handBillForm.items_description}
-                  onChange={(e) => setHandBillForm({ ...handBillForm, items_description: e.target.value })}
-                  fullWidth
-                  placeholder="Describe the items/services in this hand bill"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  label="Notes"
-                  multiline
-                  rows={2}
-                  value={handBillForm.notes}
-                  onChange={(e) => setHandBillForm({ ...handBillForm, notes: e.target.value })}
-                  fullWidth
-                  placeholder="Additional notes"
-                />
-              </Grid>
-            </Grid>
+            <HandBillForm
+              initialData={handBillForm}
+              onSubmit={handleHandBillFormSubmit}
+              onCancel={handleClose}
+              loading={submitting}
+              error={error}
+              storeId={needsStoreSelection ? selectedStoreId : undefined}
+              showStoreSelector={needsStoreSelection}
+            />
           </Box>
         )}
 
         {/* Sales Order Tab */}
         {tabValue === 3 && (
-          <Box display="flex" flexDirection="column" gap={2}>
-            <Typography variant="h6" color="primary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box>
+            <Typography variant="h6" color="primary" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
               <ShoppingCart />
               Create Sales Order
             </Typography>
             
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <CustomerSelector
-                  value={selectedOrderCustomer}
-                  onChange={setSelectedOrderCustomer}
-                  label="Customer"
-                  required={true}
-                  allowQuickAdd={true}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  label="Items Description"
-                  multiline
-                  rows={3}
-                  value={salesOrderForm.items_description}
-                  onChange={(e) => setSalesOrderForm({ ...salesOrderForm, items_description: e.target.value })}
-                  fullWidth
-                  required
-                  placeholder="Describe the items to be ordered"
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  label="Total Estimated Amount"
-                  type="number"
-                  value={salesOrderForm.total_estimated_amount || ''}
-                  onChange={(e) => setSalesOrderForm({ ...salesOrderForm, total_estimated_amount: parseFloat(e.target.value) || 0 })}
-                  fullWidth
-                  required
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start">₹</InputAdornment>
-                  }}
-                  inputProps={{ min: 0, step: 0.01 }}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  label="Advance Payment"
-                  type="number"
-                  value={salesOrderForm.advance_paid || ''}
-                  onChange={(e) => setSalesOrderForm({ ...salesOrderForm, advance_paid: parseFloat(e.target.value) || 0 })}
-                  fullWidth
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start">₹</InputAdornment>
-                  }}
-                  inputProps={{ min: 0, step: 0.01, max: salesOrderForm.total_estimated_amount }}
-                  helperText="Optional advance payment received"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  label="Notes"
-                  multiline
-                  rows={2}
-                  value={salesOrderForm.notes}
-                  onChange={(e) => setSalesOrderForm({ ...salesOrderForm, notes: e.target.value })}
-                  fullWidth
-                  placeholder="Additional notes for the order"
-                />
-              </Grid>
-            </Grid>
+            <SalesOrderForm
+              initialData={salesOrderForm}
+              onSubmit={handleSalesOrderFormSubmit}
+              onCancel={handleClose}
+              loading={submitting}
+              error={error}
+              storeId={needsStoreSelection ? selectedStoreId : undefined}
+              showStoreSelector={needsStoreSelection}
+            />
           </Box>
         )}
 
         {/* Return (RRN) Tab */}
         {tabValue === 4 && (
-          <Box display="flex" flexDirection="column" gap={2}>
-            <Typography variant="h6" color="primary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box>
+            <Typography variant="h6" color="primary" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
               <Undo />
               Create Return (RRN)
             </Typography>
             
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <CustomerSelector
-                  value={selectedReturnCustomer}
-                  onChange={setSelectedReturnCustomer}
-                  label="Customer (Optional)"
-                  allowQuickAdd={true}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  label="Return Amount"
-                  type="number"
-                  value={returnForm.return_amount || ''}
-                  onChange={(e) => setReturnForm({ ...returnForm, return_amount: parseFloat(e.target.value) || 0 })}
-                  fullWidth
-                  required
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start">₹</InputAdornment>
-                  }}
-                  inputProps={{ min: 0, step: 0.01 }}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <FormControl fullWidth>
-                  <InputLabel>Payment Method</InputLabel>
-                  <Select
-                    value={returnForm.payment_method}
-                    onChange={(e) => setReturnForm({ ...returnForm, payment_method: e.target.value as any })}
-                    label="Payment Method"
-                  >
-                    <MenuItem value="cash">Cash</MenuItem>
-                    <MenuItem value="credit_card">Credit Card</MenuItem>
-                    <MenuItem value="upi">UPI</MenuItem>
-                    <MenuItem value="store_credit">Store Credit</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  label="Original Bill Reference"
-                  value={returnForm.original_bill_reference}
-                  onChange={(e) => setReturnForm({ ...returnForm, original_bill_reference: e.target.value })}
-                  fullWidth
-                  placeholder="Original bill/receipt number"
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  label="Return Reason"
-                  value={returnForm.return_reason}
-                  onChange={(e) => setReturnForm({ ...returnForm, return_reason: e.target.value })}
-                  fullWidth
-                  required
-                  placeholder="Reason for return"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  label="Notes"
-                  multiline
-                  rows={2}
-                  value={returnForm.notes}
-                  onChange={(e) => setReturnForm({ ...returnForm, notes: e.target.value })}
-                  fullWidth
-                  placeholder="Additional notes about the return"
-                />
-              </Grid>
-            </Grid>
+            <ReturnForm
+              initialData={returnForm}
+              onSubmit={handleReturnFormSubmit}
+              onCancel={handleClose}
+              loading={submitting}
+              error={error}
+              storeId={needsStoreSelection ? selectedStoreId : undefined}
+              showStoreSelector={needsStoreSelection}
+            />
           </Box>
         )}
       </DialogContent>

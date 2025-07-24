@@ -50,6 +50,7 @@ import { HandBill, Customer, Store, HandBillFormData } from '../types'
 import { handBillsApi, storesApi } from '../services/api'
 import { useAuth } from '../hooks/useAuth'
 import CustomerSelector from '../components/CustomerSelector'
+import HandBillForm from '../components/forms/HandBillForm'
 
 interface TabPanelProps {
   children?: React.ReactNode
@@ -206,6 +207,41 @@ const HandBills = () => {
     } catch (error: any) {
       console.error('Error cancelling hand bill:', error)
       setError(error.response?.data?.error || 'Failed to cancel hand bill')
+    }
+  }
+
+  // Wrapper function for HandBillForm component
+  const handleHandBillFormSubmit = async (data: HandBillFormData & { store_id?: string }) => {
+    try {
+      setCreateLoading(true)
+      setError('')
+      
+      const requestData: any = {
+        ...data
+      }
+      
+      if (needsStoreSelection && selectedCreateStoreId) {
+        requestData.store_id = selectedCreateStoreId
+      }
+      
+      await handBillsApi.create(requestData)
+      
+      setSuccess('Hand bill created successfully!')
+      await loadHandBills()
+      setCreateModalOpen(false)
+      setCreateForm({
+        amount: 0,
+        items_description: '',
+        notes: '',
+        original_image_url: ''
+      })
+      setSelectedCreateStoreId('')
+      setSelectedCreateCustomer(null)
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to create hand bill')
+      throw err
+    } finally {
+      setCreateLoading(false)
     }
   }
 
@@ -706,84 +742,22 @@ const HandBills = () => {
       <Dialog open={createModalOpen} onClose={() => setCreateModalOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Create New Hand Bill</DialogTitle>
         <DialogContent>
-          <Box display="flex" flexDirection="column" gap={2} sx={{ mt: 1 }}>
-            {/* Store Selection for Super Users/Accounts */}
-            {needsStoreSelection && (
-              <FormControl required>
-                <InputLabel>Select Store</InputLabel>
-                <Select
-                  value={selectedCreateStoreId}
-                  onChange={(e) => setSelectedCreateStoreId(e.target.value)}
-                  label="Select Store"
-                >
-                  {stores.map((store) => (
-                    <MenuItem key={store.id} value={store.id}>
-                      {store.store_code} - {store.store_name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-            
-            <CustomerSelector
-              value={selectedCreateCustomer}
-              onChange={setSelectedCreateCustomer}
-              label="Customer (Optional)"
-              allowQuickAdd={true}
-            />
-            
-            <TextField
-              label="Amount"
-              type="number"
-              value={createForm.amount || ''}
-              onChange={(e) => setCreateForm({ ...createForm, amount: parseFloat(e.target.value) || 0 })}
-              required
-              InputProps={{
-                startAdornment: <InputAdornment position="start">₹</InputAdornment>
+          <Box sx={{ mt: 2 }}>
+            <HandBillForm
+              initialData={createForm}
+              onSubmit={handleHandBillFormSubmit}
+              onCancel={() => {
+                setCreateModalOpen(false)
+                setSelectedCreateStoreId('')
+                setSelectedCreateCustomer(null)
               }}
-              inputProps={{ min: 0, step: 0.01 }}
-            />
-            
-            <TextField
-              label="Items Description"
-              multiline
-              rows={3}
-              value={createForm.items_description}
-              onChange={(e) => setCreateForm({ ...createForm, items_description: e.target.value })}
-              required
-              placeholder="Describe the items/services in this hand bill"
-            />
-            
-            <TextField
-              label="Original Image URL"
-              value={createForm.original_image_url || ''}
-              onChange={(e) => setCreateForm({ ...createForm, original_image_url: e.target.value })}
-              placeholder="URL to hand bill image"
-              InputProps={{
-                startAdornment: <InputAdornment position="start"><CloudUpload /></InputAdornment>
-              }}
-            />
-            
-            <TextField
-              label="Notes"
-              multiline
-              rows={2}
-              value={createForm.notes}
-              onChange={(e) => setCreateForm({ ...createForm, notes: e.target.value })}
-              placeholder="Additional notes"
+              loading={createLoading}
+              error={error}
+              storeId={needsStoreSelection ? selectedCreateStoreId : undefined}
+              showStoreSelector={needsStoreSelection}
             />
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCreateModalOpen(false)}>Cancel</Button>
-          <Button
-            onClick={handleCreateHandBill}
-            variant="contained"
-            disabled={createLoading}
-          >
-            {createLoading ? 'Creating...' : 'Create Hand Bill'}
-          </Button>
-        </DialogActions>
       </Dialog>
     </Box>
   )

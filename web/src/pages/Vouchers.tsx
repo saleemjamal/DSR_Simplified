@@ -44,6 +44,7 @@ import { format, addDays } from 'date-fns'
 import { GiftVoucher, VoucherFormData, Store } from '../types'
 import { vouchersApi, storesApi } from '../services/api'
 import { useAuth } from '../hooks/useAuth'
+import VoucherForm from '../components/forms/VoucherForm'
 
 interface TabPanelProps {
   children?: React.ReactNode
@@ -145,6 +146,42 @@ const Vouchers = () => {
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue)
+  }
+
+  // Wrapper function for VoucherForm component
+  const handleVoucherFormSubmit = async (data: VoucherFormData & { store_id?: string }) => {
+    try {
+      setCreateLoading(true)
+      setError('')
+      
+      const requestData: any = {
+        ...data
+      }
+      
+      if (needsStoreSelection && selectedStoreId) {
+        requestData.store_id = selectedStoreId
+      }
+      
+      const newVoucher = await vouchersApi.create(requestData)
+      
+      setSuccess('Gift voucher created successfully!')
+      loadVouchers()
+      setCreateModalOpen(false)
+      setCreateForm({
+        original_amount: 0,
+        expiry_date: format(addDays(new Date(), 30), 'yyyy-MM-dd'),
+        customer_name: '',
+        customer_phone: '',
+        notes: '',
+        voucher_number: ''
+      })
+      setSelectedStoreId('')
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to create voucher')
+      throw err // Re-throw to let the form component handle it
+    } finally {
+      setCreateLoading(false)
+    }
   }
 
   const handleCreateVoucher = async () => {
@@ -525,96 +562,21 @@ const Vouchers = () => {
       <Dialog open={createModalOpen} onClose={() => setCreateModalOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Create New Gift Voucher</DialogTitle>
         <DialogContent>
-          <Box display="flex" flexDirection="column" gap={2} sx={{ mt: 1 }}>
-            {/* Store Selection for Super Users/Accounts */}
-            {needsStoreSelection && (
-              <FormControl required>
-                <InputLabel>Select Store</InputLabel>
-                <Select
-                  value={selectedStoreId}
-                  onChange={(e) => setSelectedStoreId(e.target.value)}
-                  label="Select Store"
-                >
-                  {stores.map((store) => (
-                    <MenuItem key={store.id} value={store.id}>
-                      {store.store_code} - {store.store_name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-            
-            <TextField
-              label="Amount"
-              type="number"
-              value={createForm.original_amount || ''}
-              onChange={(e) => setCreateForm({ ...createForm, original_amount: parseFloat(e.target.value) || 0 })}
-              required
-              InputProps={{
-                startAdornment: <InputAdornment position="start">₹</InputAdornment>
+          <Box sx={{ mt: 2 }}>
+            <VoucherForm
+              initialData={createForm}
+              onSubmit={handleVoucherFormSubmit}
+              onCancel={() => {
+                setCreateModalOpen(false)
+                setSelectedStoreId('')
               }}
-              inputProps={{ min: 0, step: 0.01 }}
-            />
-            <TextField
-              label="Expiry Date"
-              type="date"
-              value={createForm.expiry_date}
-              onChange={(e) => setCreateForm({ ...createForm, expiry_date: e.target.value })}
-              required
-              InputLabelProps={{ shrink: true }}
-              inputProps={{ min: format(new Date(), 'yyyy-MM-dd') }}
-            />
-            <TextField
-              label="Voucher Number (Optional)"
-              value={createForm.voucher_number}
-              onChange={(e) => setCreateForm({ ...createForm, voucher_number: e.target.value })}
-              placeholder="Leave empty to auto-generate"
-              helperText="If empty, system will auto-generate voucher number"
-            />
-            <TextField
-              label="Customer Name *"
-              value={createForm.customer_name}
-              onChange={(e) => setCreateForm({ ...createForm, customer_name: e.target.value })}
-              placeholder="Enter customer name"
-              required
-            />
-            <TextField
-              label="Customer Phone *"
-              value={createForm.customer_phone}
-              onChange={(e) => setCreateForm({ ...createForm, customer_phone: e.target.value })}
-              placeholder="+91 9876543210"
-              required
-            />
-            <TextField
-              label="Notes"
-              multiline
-              rows={3}
-              value={createForm.notes}
-              onChange={(e) => setCreateForm({ ...createForm, notes: e.target.value })}
-              placeholder="Additional notes for the voucher"
+              loading={createLoading}
+              error={error}
+              storeId={needsStoreSelection ? selectedStoreId : undefined}
+              showStoreSelector={needsStoreSelection}
             />
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => {
-            setCreateModalOpen(false)
-            setSelectedStoreId('')
-          }}>Cancel</Button>
-          <Button
-            onClick={handleCreateVoucher}
-            variant="contained"
-            disabled={
-              createLoading || 
-              !createForm.original_amount || 
-              !createForm.expiry_date || 
-              !createForm.customer_name ||
-              !createForm.customer_phone ||
-              (needsStoreSelection && !selectedStoreId)
-            }
-          >
-            {createLoading ? 'Creating...' : 'Create Voucher'}
-          </Button>
-        </DialogActions>
       </Dialog>
 
       {/* Redeem Voucher Modal */}

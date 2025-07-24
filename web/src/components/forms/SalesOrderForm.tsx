@@ -85,6 +85,12 @@ const SalesOrderForm = ({
       return false
     }
 
+    // Store selection validation for super users and accounts incharge
+    if (showStoreSelector && !storeId) {
+      setInternalError('Please select a store')
+      return false
+    }
+
     return true
   }
 
