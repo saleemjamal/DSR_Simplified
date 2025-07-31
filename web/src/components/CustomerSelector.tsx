@@ -120,6 +120,10 @@ const CustomerSelector = ({
       const result = await customersApi.create(customerData)
       const newCustomer = result.data
 
+      if (!newCustomer) {
+        throw new Error('Failed to create customer')
+      }
+
       // Add to customers list and select it
       setCustomers(prev => [newCustomer, ...prev])
       onChange(newCustomer)

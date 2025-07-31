@@ -38,8 +38,8 @@ const Sales = () => {
   // Filter state for viewing transactions
   const [viewFilter, setViewFilter] = useState({
     period: 'today',
-    dateFrom: format(new Date(), 'yyyy-MM-dd'),
-    dateTo: format(new Date(), 'yyyy-MM-dd'),
+    dateFrom: format(new Date(), 'yyyy-MM-dd') as string | undefined,
+    dateTo: format(new Date(), 'yyyy-MM-dd') as string | undefined,
     store_id: '',
     store_name: undefined as string | undefined
   })

@@ -92,7 +92,7 @@ const Users = () => {
         return
       }
       
-      await authApi.createCashier(createForm)
+      await authApi.createUser(createForm)
       
       setCreateDialogOpen(false)
       setCreateForm({

@@ -85,12 +85,12 @@ const SalesOrderForm = ({
       return false
     }
 
-    if (showAdvancePayment && formData.advance_paid < 0) {
+    if (showAdvancePayment && (formData.advance_paid || 0) < 0) {
       setInternalError('Advance payment cannot be negative')
       return false
     }
 
-    if (showAdvancePayment && formData.advance_paid > formData.total_estimated_amount) {
+    if (showAdvancePayment && (formData.advance_paid || 0) > formData.total_estimated_amount) {
       setInternalError('Advance payment cannot exceed estimated amount')
       return false
     }
@@ -116,7 +116,7 @@ const SalesOrderForm = ({
       const submitData: SalesOrderFormData & { store_id?: string } = {
         ...formData,
         total_estimated_amount: parseFloat(formData.total_estimated_amount.toString()),
-        advance_paid: parseFloat(formData.advance_paid.toString()) || 0
+        advance_paid: parseFloat((formData.advance_paid || 0).toString()) || 0
       }
 
       // Add store_id for super users or use current user's store
@@ -144,7 +144,7 @@ const SalesOrderForm = ({
     setInternalError('')
   }
 
-  const remainingAmount = formData.total_estimated_amount - formData.advance_paid
+  const remainingAmount = formData.total_estimated_amount - (formData.advance_paid || 0)
 
   return (
     <Box component="form" onSubmit={handleSubmit}>
@@ -303,7 +303,7 @@ const SalesOrderForm = ({
           {showAdvancePayment && (
             <>
               <Typography variant="body2">
-                Advance Paid: ₹{formData.advance_paid.toLocaleString()}
+                Advance Paid: ₹{(formData.advance_paid || 0).toLocaleString()}
               </Typography>
               <Typography variant="body2">
                 Remaining: ₹{remainingAmount.toLocaleString()}
